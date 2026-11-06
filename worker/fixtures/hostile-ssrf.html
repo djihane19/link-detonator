@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Larkspur Bank network check</title>
+<style>
+  body { margin: 0; font: 15px/1.5 Menlo, Consolas, monospace; color: #1f2a30; background: #f4f4f1; }
+  main { padding: 32px 40px; }
+  li { margin: 2px 0; }
+  footer { padding: 16px 40px; font-family: Helvetica, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Larkspur Bank network check</h1>
+  <p>This page tries to reach internal addresses. Results stay on this page.</p>
+  <ul id="results"></ul>
+</main>
+<footer>Link Detonator test fixture</footer>
+<script>
+  const results = document.getElementById("results");
+  const report = (label, outcome) => {
+    const item = document.createElement("li");
+    item.textContent = label + ": " + outcome;
+    results.appendChild(item);
+  };
+
+  const fetchTargets = [
+    "http://169.254.169.254/latest/meta-data/",
+    "http://10.0.0.1/",
+    "http://172.16.0.1/",
+    "http://192.168.1.1/",
+    "http://127.0.0.1:8000/",
+    "http://[::1]:8000/",
+  ];
+  for (const target of fetchTargets) {
+    fetch(target, { mode: "no-cors" }).then(
+      () => report(target, "answered"),
+      () => report(target, "no answer"),
+    );
+  }
+
+  const imageTargets = [
+    "http://169.254.169.254/latest/user-data",
+    "http://10.0.0.2/pixel.gif",
+    "http://127.0.0.1:8080/pixel.gif",
+  ];
+  for (const target of imageTargets) {
+    const image = new Image();
+    image.onload = () => report(target, "answered");
+    image.onerror = () => report(target, "no answer");
+    image.src = target;
+  }
+
+  const socket = new WebSocket("ws://127.0.0.1:8081/");
+  socket.onerror = () => report("ws://127.0.0.1:8081/", "no answer");
+</script>
+</body>
+</html>

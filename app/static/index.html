@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Open a suspicious link in a throwaway browser and get the evidence back.">
+  <title>Link Detonator</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body data-page="home" data-runner="unknown">
+  <a class="skip" href="#arm">Skip to the scan form</a>
+
+  <div class="dev-banner" role="note">
+    <strong>DEV: NOT SANDBOXED</strong>
+    <span>This browser runs directly on this machine. No container, no firewall. Offline fixtures only.</span>
+  </div>
+
+  <div class="tape" aria-hidden="true"></div>
+
+  <main id="main" class="home">
+    <section class="hero" aria-labelledby="home-title">
+      <div class="hero-mark">
+        <h1 id="home-title" class="visually-hidden">Link Detonator</h1>
+        <svg class="wordmark" viewBox="-1 -1 747 224" role="img" aria-label="Link Detonator: a fuse runs from the word Link into the letter O of Detonator" focusable="false">
+          <g class="glyphs">
+            <path transform="translate(0 0)" d="M0 0H18V100H0Z M24 82H56V100H24Z"/>
+            <path transform="translate(67 0)" d="M0 0H18V100H0Z"/>
+            <path transform="translate(96 0)" d="M0 0H18V100H0Z M24 0H38L54 62V100H40L24 38Z M60 0H78V100H60Z"/>
+            <path transform="translate(185 0)" d="M0 0H18V100H0Z M24 44L43 0H63L40 47H24Z M24 53H40L64 100H44Z"/>
+            <path transform="translate(0 122)" d="M0 0H18V100H0Z M24 0H44L64 20V80L44 100H24V82H38L46 74V26L38 18H24Z"/>
+            <path transform="translate(75 122)" d="M0 0H18V100H0Z M24 0H58V18H24Z M24 41H52V59H24Z M24 82H58V100H24Z"/>
+            <path transform="translate(144 122)" d="M0 0H60V18H0Z M21 24H39V100H21Z"/>
+            <circle class="ring" cx="265" cy="172" r="41"/>
+            <path transform="translate(326 122)" d="M0 0H18V100H0Z M24 0H38L54 62V100H40L24 38Z M60 0H78V100H60Z"/>
+            <path transform="translate(415 122)" d="M0 100L24 0H32V34L19 100Z M38 0H46L70 100H51L38 34Z M29 66H41L44 80H26Z"/>
+            <path transform="translate(496 122)" d="M0 0H60V18H0Z M21 24H39V100H21Z"/>
+            <circle class="ring" cx="617" cy="172" r="41"/>
+            <path transform="translate(678 122)" d="M0 0H18V100H0Z M24 0H46L66 20V40L48 58H24V40H42L48 34V26L40 18H24Z M28 64H50L66 100H46Z"/>
+          </g>
+          <path class="fuse-track" d="M257 50H617V172"/>
+          <path class="fuse-burn" d="M257 50H617V172" pathLength="100"/>
+          <circle class="charge" cx="617" cy="172" r="15"/>
+        </svg>
+      </div>
+      <p class="lede">Got a link you do not trust? Set it off in a throwaway browser instead of your own. It never clicks, types or submits anything. You get back what the page tried to do, and the chamber is destroyed.</p>
+    </section>
+
+    <section class="arm-grid">
+      <form id="arm" class="arm" novalidate aria-labelledby="arm-title">
+        <h2 id="arm-title" class="stencil">Arm a link</h2>
+        <label class="field-label" for="target-url">Suspicious URL</label>
+        <div class="arm-row">
+          <input id="target-url" name="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="2048" placeholder="https://paste-the-link-here.example/" aria-describedby="arm-hint arm-error">
+          <button id="arm-submit" class="detonate" type="submit">Detonate</button>
+        </div>
+        <label class="field-label" for="access-code">Access code</label>
+        <div class="arm-row">
+          <input id="access-code" name="access_code" type="password" autocomplete="off" spellcheck="false" maxlength="256" placeholder="Required for live links" aria-describedby="arm-hint">
+        </div>
+        <p id="arm-hint" class="hint">http or https, on a public host. Private and internal addresses are refused. Live links need an access code from the operator. Test charges do not.</p>
+        <p id="arm-error" class="form-error" role="alert" hidden></p>
+      </form>
+
+      <section id="gauntlet-slot" class="gauntlet" aria-labelledby="gauntlet-title">
+        <p class="eyebrow">Start here</p>
+        <h2 id="gauntlet-title" class="gauntlet-title">The Gauntlet</h2>
+        <p class="gauntlet-copy">One test page that throws most of the hostile tricks we know at the chamber: a fake login, concealed instructions, a forced download, a run at private addresses, a small memory allocation and a frozen tab. Watch what each one does. Memory has its own test charge, because pressing the limit would crash the page before the freeze.</p>
+        <button id="run-gauntlet" class="detonate detonate-wide" type="button" data-fixture="hostile-gauntlet">Run the Gauntlet</button>
+      </section>
+    </section>
+
+    <section class="range" aria-labelledby="range-title">
+      <header class="section-head">
+        <h2 id="range-title" class="stencil">Test charges</h2>
+        <p class="hint">Fictional pages served only inside the sandbox. Nothing hostile is hosted anywhere public.</p>
+      </header>
+      <ul id="fixture-rack" class="rack" aria-live="polite"></ul>
+      <p id="rack-error" class="form-error" role="alert" hidden></p>
+    </section>
+
+    <section class="principles" aria-labelledby="principles-title">
+      <h2 id="principles-title" class="visually-hidden">How a deployed chamber behaves</h2>
+      <ul class="principle-list">
+        <li><span class="principle-key">Hands off</span> The browser only looks. No clicks, no typing, no submits, no kept downloads.</li>
+        <li><span class="principle-key">Walled in</span> On the deployed host, a firewall stops the chamber reaching private networks, cloud metadata or the host itself.</li>
+        <li><span class="principle-key">No secrets inside</span> Nothing is passed into the container. Evidence leaves through one output stream, treated as hostile.</li>
+        <li><span class="principle-key">Destroyed, then checked</span> Every chamber is removed after its scan, and the host confirms it is gone.</li>
+      </ul>
+      <p class="dev-only principle-warning">None of the four applies in this dev run. The worker is a plain local process.</p>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <p>Link Detonator. Defensive triage tool. Evidence only: no AI verdict is connected in this build.</p>
+  </footer>
+  <noscript><p class="noscript">Link Detonator needs JavaScript to submit and display scans.</p></noscript>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex">
+  <title>Scan report: Link Detonator</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body data-page="report" data-runner="unknown">
+  <a class="skip" href="#blast-title">Skip to the Blast Radius</a>
+
+  <div class="dev-banner" role="note">
+    <strong>DEV: NOT SANDBOXED</strong>
+    <span>This browser ran directly on this machine. No container, no firewall. Offline fixtures only.</span>
+  </div>
+
+  <div class="tape" aria-hidden="true"></div>
+
+  <header class="report-head">
+    <a class="brand" href="/" aria-label="Link Detonator home">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <circle class="ring-small" cx="32" cy="32" r="22"/>
+        <circle class="charge-small" cx="32" cy="32" r="8"/>
+      </svg>
+      <span class="brand-name">Link Detonator</span>
+    </a>
+    <div class="report-actions">
+      <button id="copy-link" class="ghost" type="button">Copy report link</button>
+      <a class="ghost" href="/">New scan</a>
+    </div>
+  </header>
+
+  <main id="main" class="report">
+    <section class="target-strip" aria-label="Scan target and state">
+      <div class="target-block">
+        <p class="eyebrow" id="target-kind">Target</p>
+        <p id="target-text" class="target-text" dir="ltr">Loading</p>
+        <p class="hint">Shown as plain text. Attacker-controlled strings on this page are never clickable.</p>
+      </div>
+      <dl class="readout">
+        <div><dt>State</dt><dd id="scan-state" class="state" data-state="loading">Loading</dd></div>
+        <div><dt>Elapsed</dt><dd id="scan-elapsed">00:00</dd></div>
+        <div><dt>Events</dt><dd id="scan-count">0</dd></div>
+      </dl>
+    </section>
+
+    <p id="stream-note" class="stream-note" role="status" hidden></p>
+    <p id="live-announcer" class="visually-hidden" aria-live="polite"></p>
+
+    <section class="blast" aria-labelledby="blast-title">
+      <header class="blast-head">
+        <h1 id="blast-title" class="stencil stencil-large">Blast Radius</h1>
+        <p class="hint">Eight ways a hostile page can hurt you. A row only says contained when the evidence proves it.</p>
+      </header>
+      <div class="blast-body">
+        <figure class="chamber-figure">
+          <svg id="chamber" class="chamber" viewBox="10 70 700 584" role="img" aria-labelledby="chamber-summary" focusable="false"></svg>
+          <figcaption id="chamber-summary" class="visually-hidden">Blast Radius plan: waiting for evidence.</figcaption>
+          <ul class="legend" aria-label="How to read the plan">
+            <li><span class="swatch swatch-contained" aria-hidden="true"></span>Contained: the recorded events show it was stopped</li>
+            <li><span class="swatch swatch-observed" aria-hidden="true"></span>Observed: seen, not judged</li>
+            <li><span class="swatch swatch-failed" aria-hidden="true"></span>Failed: the check did not hold</li>
+            <li><span class="swatch swatch-clear" aria-hidden="true"></span>Clear: checked, nothing found</li>
+            <li><span class="swatch swatch-quiet" aria-hidden="true"></span>Not observed or not applicable</li>
+          </ul>
+        </figure>
+        <ol id="blast-rows" class="rows"></ol>
+      </div>
+    </section>
+
+    <section id="verdict-card" class="verdict" data-status="pending" aria-labelledby="verdict-title">
+      <p class="eyebrow">Verdict</p>
+      <h2 id="verdict-title" class="verdict-title">Verdict engine not connected</h2>
+      <p id="verdict-body" class="verdict-body">No verdict has been issued, and none is implied. Everything on this page is raw evidence, not a judgement.</p>
+    </section>
+
+    <div class="evidence-grid">
+      <section class="panel film-panel" aria-labelledby="film-title">
+        <header class="section-head">
+          <h2 id="film-title" class="stencil">Filmstrip</h2>
+          <p id="film-count" class="hint">No frames yet</p>
+        </header>
+        <ol id="filmstrip" class="filmstrip" tabindex="0" aria-label="Screenshots in capture order"></ol>
+      </section>
+
+      <section class="panel chain-panel" aria-labelledby="chain-title">
+        <header class="section-head">
+          <h2 id="chain-title" class="stencil">Redirect chain</h2>
+          <p id="chain-count" class="hint">No navigation yet</p>
+        </header>
+        <ol id="redirect-chain" class="chain"></ol>
+      </section>
+
+      <section class="panel layers-panel" aria-labelledby="layers-title">
+        <header class="section-head">
+          <h2 id="layers-title" class="stencil">What you see, what it hid</h2>
+          <p class="hint">Shown as found. Not classified: no model has read this text.</p>
+        </header>
+        <div id="text-layers" class="layers"></div>
+      </section>
+
+      <section class="panel timeline-panel" aria-labelledby="timeline-title">
+        <header class="section-head">
+          <h2 id="timeline-title" class="stencil">Timeline</h2>
+          <p class="hint"><span class="key-host" aria-hidden="true"></span> Host: trusted fact. <span class="key-worker" aria-hidden="true"></span> Worker: reported from inside, hostile until checked.</p>
+        </header>
+        <ol id="timeline" class="timeline" role="log" aria-live="off" aria-label="Scan events in order" tabindex="0"></ol>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="lightbox" class="lightbox" aria-labelledby="lightbox-caption">
+    <div class="lightbox-bar">
+      <p id="lightbox-caption" class="lightbox-caption"></p>
+      <div class="lightbox-buttons">
+        <button id="lightbox-prev" class="ghost" type="button" aria-label="Previous frame">Prev</button>
+        <button id="lightbox-next" class="ghost" type="button" aria-label="Next frame">Next</button>
+        <button id="lightbox-close" class="ghost" type="button">Close</button>
+      </div>
+    </div>
+    <img id="lightbox-image" class="lightbox-image" alt="">
+  </dialog>
+
+  <footer class="site-foot">
+    <p>Link Detonator. Defensive triage tool. Evidence only: no AI verdict is connected in this build.</p>
+  </footer>
+  <noscript><p class="noscript">Link Detonator needs JavaScript to display scan reports.</p></noscript>
+</body>
+</html>

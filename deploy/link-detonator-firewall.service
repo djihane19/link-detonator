@@ -1,0 +1,17 @@
+[Unit]
+Description=Link Detonator sandbox firewall
+Documentation=file:/opt/link-detonator/docs/ARCHITECTURE.md
+# Rules do not survive a reboot, and firewall.sh needs dockerd's chains to exist.
+# BindsTo plus WantedBy=docker.service re-runs this whenever Docker comes back.
+BindsTo=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/link-detonator/deploy/firewall.sh
+TimeoutStartSec=120
+# No ExecStop on purpose: stopping this unit must never open the firewall.
+
+[Install]
+WantedBy=docker.service multi-user.target

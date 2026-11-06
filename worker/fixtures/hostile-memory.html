@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Larkspur Bank statement archive</title>
+<style>
+  body { margin: 0; font: 16px/1.5 Helvetica, Arial, sans-serif; color: #2f2a1c; background: #f7f4e8; }
+  main { padding: 48px; }
+  footer { padding: 16px 48px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Larkspur Bank statement archive</h1>
+  <p id="progress">Allocated 0 MiB.</p>
+</main>
+<footer>Link Detonator test fixture</footer>
+<script>
+  // Bounded at 1200 MiB: past the sandbox's 1 GiB limit, so the limit is what
+  // stops it there, but still finite if a local run has no limit at all.
+  const CHUNK_MIB = 32;
+  const LIMIT_MIB = 1200;
+  const held = [];
+  const progress = document.getElementById("progress");
+  const grow = setInterval(() => {
+    try {
+      const chunk = new Uint8Array(CHUNK_MIB * 1024 * 1024);
+      chunk.fill(held.length % 251);
+      held.push(chunk);
+      const total = held.length * CHUNK_MIB;
+      progress.textContent = "Allocated " + total + " MiB.";
+      if (total >= LIMIT_MIB) {
+        clearInterval(grow);
+        progress.textContent = "Allocated " + total + " MiB. Allocation finished.";
+      }
+    } catch (error) {
+      clearInterval(grow);
+      progress.textContent = "Allocation stopped at " + held.length * CHUNK_MIB + " MiB.";
+    }
+  }, 50);
+</script>
+</body>
+</html>

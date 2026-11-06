@@ -1,0 +1,36 @@
+[Unit]
+Description=Link Detonator orchestrator
+Documentation=file:/opt/link-detonator/docs/ARCHITECTURE.md
+Wants=network-online.target
+# Fail closed: no firewall unit, no app.
+BindsTo=link-detonator-firewall.service
+After=network-online.target docker.service link-detonator-firewall.service
+
+[Service]
+Type=simple
+User=detonator
+Group=detonator
+# Docker group membership is root-equivalent on this VM. See README, "Security model".
+SupplementaryGroups=docker
+WorkingDirectory=/opt/link-detonator
+EnvironmentFile=/etc/link-detonator/app.env
+# "+" runs this one step as root, because reading iptables needs it.
+ExecStartPre=+/opt/link-detonator/deploy/firewall.sh --check
+# Open event streams hold shutdown until their scan ends. The bound outlasts one 60 s scan
+# and stays under systemd's 90 s stop timeout, so a backlog is cut off with cleanup run.
+ExecStart=/opt/link-detonator/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-server-header --timeout-graceful-shutdown 70
+Restart=on-failure
+RestartSec=3
+# The hardening below limits slips, not an attacker: the docker group outranks it.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/link-detonator/data
+# Containers are not in this unit's cgroup, so this bounds the orchestrator alone. A log read
+# for a hostile report must not push the kernel into killing a sandbox or this process.
+MemoryMax=1G
+
+[Install]
+# The second target restarts the app after the firewall unit is re-run.
+WantedBy=multi-user.target link-detonator-firewall.service

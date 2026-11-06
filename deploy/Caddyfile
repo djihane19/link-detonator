@@ -1,0 +1,25 @@
+# Template. provision.sh replaces __LD_SITE_ADDRESS__ and installs the result as
+# /etc/caddy/Caddyfile. The default address is <public-ip>.sslip.io, a name that resolves
+# to that IP, which lets Caddy obtain a certificate automatically with no domain to buy.
+# Set LD_SITE_ADDRESS when running provision.sh to use your own domain.
+
+__LD_SITE_ADDRESS__ {
+	# The API only accepts small JSON bodies.
+	request_body {
+		max_size 64KB
+	}
+
+	# Caddy discards X-Forwarded-For from untrusted clients and sets its own, so the
+	# app can safely run with LD_TRUST_PROXY=1 behind it.
+	reverse_proxy 127.0.0.1:8000 {
+		# Do not buffer the live event stream.
+		flush_interval -1
+	}
+
+	# Report URLs are unguessable but not private, so access logs are not kept.
+	log {
+		output discard
+	}
+
+	header -Server
+}

