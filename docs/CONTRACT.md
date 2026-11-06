@@ -8,7 +8,7 @@ lablab's guide says core AI functionality should be built during the event windo
 
 - Allowed now: sandbox, firewall, evidence capture, API, UI, fixtures, deploy tooling, tests.
 - Not allowed before kickoff: any LLM client or call, prompts, agent planning loop, AI verdict logic, prompt-injection classification by a model.
-- `app/verdict.py` holds the seam: a `VerdictEngine` protocol and `PendingVerdictEngine`, which always returns `status: "pending"`. Never fabricate or hard-code a verdict.
+- `app/verdict.py` holds the seam: a `VerdictEngine` protocol and `PendingVerdictEngine`, which always returns `status: "pending"`. Never fabricate or hard-code a verdict. *(After kickoff, `app/agent/` implements this seam. `PendingVerdictEngine` remains the behaviour when no inference key is set.)*
 
 ## Layout
 

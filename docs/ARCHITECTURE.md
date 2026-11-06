@@ -1,6 +1,6 @@
 # Architecture
 
-This explains how the parts fit together and why. [CONTRACT.md](CONTRACT.md) holds the exact rules, and the code must conform to it. **Nothing here has been run on a VM or with real Docker yet**, so read it as design until `deploy/verify_sandbox.sh` passes on one.
+This explains how the parts fit together and why. [CONTRACT.md](CONTRACT.md) holds the exact rules, and the code must conform to it. The sandbox and firewall described here are verified on the live VM: see [VERIFICATION.md](VERIFICATION.md) for the raw output and its limits.
 
 ## Components
 
@@ -10,7 +10,7 @@ This explains how the parts fit together and why. [CONTRACT.md](CONTRACT.md) hol
 | FastAPI orchestrator (`app/`) | VM, as user `detonator` | Trusted. Assigns all event sequence numbers and timestamps |
 | Worker (`worker/`) | Sandbox container | **Hostile once a page has loaded.** Its output is untrusted input |
 | Firewall (`deploy/firewall.sh`) | VM kernel | The real network boundary |
-| Verdict engine | Not built | Only the `VerdictEngine` seam exists until after kickoff |
+| Agent (`app/agent/`) | VM, inside the orchestrator | Proposes only. A deterministic policy decides; model output is treated as untrusted |
 
 ## A scan, step by step
 
@@ -98,6 +98,6 @@ The counters are why it should run with no scans in progress: another scan's tra
 
 `detonator` is in the `docker` group, which is root-equivalent on the VM. A compromise of the orchestrator is effectively root. The systemd hardening in the unit limits accidents, not an attacker. A narrower Docker API proxy would help, but was not worth the added moving parts for a disposable, single-purpose VM. That is why **this VM must hold nothing else**.
 
-## Where the AI will go
+## The agent
 
-After kickoff, a real `VerdictEngine` will replace `PendingVerdictEngine`. None of it exists yet and its design is not settled. Whatever it reads from a page is attacker-controlled, so it must be treated as untrusted data.
+`app/agent/` replaced `PendingVerdictEngine` after kickoff. The model reads recorded evidence, which is attacker-controlled and passed only as data inside a marked block, and proposes a verdict and follow-up actions. `policy.py` allows one action kind, opening a link seen in the evidence, and only in a fresh sandbox. `verify.py` reports outcomes from host-recorded facts and never from the model's claims. Three checks run without trusting the model: a planted secret, a with-and-without-hidden-text comparison, and hidden-text pattern detectors. They can raise the verdict, never lower it. Measured results are in [reports/README.md](../reports/README.md).

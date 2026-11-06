@@ -32,7 +32,7 @@ Status as of 2026-11-03, after the first agent build. "Verified" means run here 
 
 ## Could fail in a live demo
 - The model service: rate limits, latency, or `response_format` being rejected. Failure shows "unavailable" honestly, not a fake verdict.
-- The firewall error assumption: `ERR_ADDRESS_UNREACHABLE` is reasoned, not observed. If wrong, `private_network` reads `observed`, not `contained`, until fixed. `verify_sandbox.sh` checks this.
+- ~~The firewall error assumption~~ Confirmed on the VM: Chromium reports `net::ERR_ADDRESS_UNREACHABLE` for every blocked private target (see VERIFICATION.md).
 - Latency: two to four model calls after a 15-second scan.
 
 ## Must happen before deployment

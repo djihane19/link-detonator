@@ -16,9 +16,10 @@ See `docs/AUDIT.md` for status and `docs/ENGINEERING_LOG.md` for decisions. Run 
 
 | Part | Status |
 |---|---|
-| Deploy scripts | `bash -n` only, plus the generated rule text and the event checker (`tests/test_hardening.py`). They have never been executed against `iptables` or Docker |
-| Firewall and sandbox behaviour | **Never run for real.** Nothing here has been tested on a VM or with real Docker |
-| `deploy/verify_sandbox.sh` | Written to prove this on the VM. Until it passes there, treat the guarantees below as design intent |
+| Sandbox and firewall | **Verified on the live VM:** `deploy/verify_sandbox.sh` passes 40 of 40 real checks (latest run 2026-11-06 23:37 UTC). Raw output and what it does and does not prove: [docs/VERIFICATION.md](docs/VERIFICATION.md) |
+| Deploy scripts | Run for real: `provision.sh` built this VM, and it refuses to start the app unless verification passes |
+| AI agent | Running on the VM with Vultr Serverless Inference. Real benchmark results: [reports/README.md](reports/README.md) |
+| Not verified | Resistance to Chromium or kernel exploits, and the gVisor path. See "Security model" below |
 
 ## Architecture
 
@@ -92,7 +93,7 @@ make dev      # http://127.0.0.1:8000
 
 ## Deploying to a VM
 
-These steps have not been run yet. Follow them expecting to debug, and leave time for it.
+These steps built the live VM on 2026-11-05. The first run found one bug in the verification script, since fixed (see the engineering log).
 
 1. Create a new Ubuntu 24.04 VM dedicated to this. If you use a Vultr firewall group, allow 22, 80 and 443.
 2. Copy the repo to the VM:
