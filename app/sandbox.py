@@ -73,6 +73,10 @@ _WORKER_DEADLINE_SHARE = 0.75
 _WORKER_MIN_DEADLINE_S = 5.0
 _WORKER_MAX_DEADLINE_S = 300.0
 
+# Bounded wait for a killed container to stop: 30 x 0.1 s.
+KILL_CONFIRM_POLLS = 30
+KILL_CONFIRM_INTERVAL_S = 0.1
+
 _DOCKER_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")
 _CONTAINER_ID = re.compile(r"^[0-9a-f]{12,64}$")
 _NO_SUCH_CONTAINER = re.compile(r"no such (container|object)", re.IGNORECASE)
@@ -636,11 +640,17 @@ class _DockerScan:
         """
         if kill is None or kill.returncode != 0:
             return False
-        inspection = await self._client.inspect(self._name)
-        if inspection.state == "missing":
-            return True
-        state = inspection.info.get("State") if inspection.info else None
-        return isinstance(state, dict) and state.get("Running") is False
+        # docker kill returns once the signal is sent, so the state can lag for a moment.
+        # Measured on the VM: a killed sandbox is gone within about 300 ms.
+        for _ in range(KILL_CONFIRM_POLLS):
+            inspection = await self._client.inspect(self._name)
+            if inspection.state == "missing":
+                return True
+            state = inspection.info.get("State") if inspection.info else None
+            if isinstance(state, dict) and state.get("Running") is False:
+                return True
+            await asyncio.sleep(KILL_CONFIRM_INTERVAL_S)
+        return False
 
     async def _admit(self) -> bool:
         """Reports the sandbox and audits it. Worker output is read only after a clean audit."""

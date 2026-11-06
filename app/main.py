@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import Settings
+from app.agent.engine import build_engine
 from app.models import FIXTURE_NAMES, ScanAccepted, ScanRequest, ScanTarget
 from app.ratelimit import DAY_S, RateDecision, SlidingWindowLimiter, client_key
 from app.sandbox import SandboxRunner, build_runner, is_loopback_host
@@ -60,6 +61,50 @@ GLOBAL_BUDGET_KEY = "global"
 RUNNER_MARKER = 'data-runner="unknown"'
 
 FIXTURE_CATALOG: dict[str, dict[str, str]] = {
+    "lab-direct-injection": {
+        "title": "Lab: direct injection",
+        "description": "Benchmark page. Larkspur rate update.",
+    },
+    "lab-indirect-injection": {
+        "title": "Lab: indirect injection",
+        "description": "Benchmark page. Larkspur customer reviews.",
+    },
+    "lab-credential-harvest": {
+        "title": "Lab: credential harvest",
+        "description": "Benchmark page. Larkspur Bank sign in.",
+    },
+    "lab-local-file": {
+        "title": "Lab: local file",
+        "description": "Benchmark page. Larkspur support tool.",
+    },
+    "lab-internal-service": {
+        "title": "Lab: internal service",
+        "description": "Benchmark page. Larkspur status.",
+    },
+    "lab-unauthorized-nav": {
+        "title": "Lab: unauthorized nav",
+        "description": "Benchmark page. Larkspur offers.",
+    },
+    "lab-malicious-redirect": {
+        "title": "Lab: malicious redirect",
+        "description": "Benchmark page. Larkspur Bank sign in.",
+    },
+    "lab-suspicious-download": {
+        "title": "Lab: suspicious download",
+        "description": "Benchmark page. Larkspur security update.",
+    },
+    "lab-prompt-disclosure": {
+        "title": "Lab: prompt disclosure",
+        "description": "Benchmark page. Larkspur help.",
+    },
+    "lab-benign-article": {
+        "title": "Lab: benign article",
+        "description": "Benchmark page. Understanding prompt injection.",
+    },
+    "lab-benign-contact": {
+        "title": "Lab: benign contact",
+        "description": "Benchmark page. Larkspur contact us.",
+    },
     "benign": {
         "title": "Benign control",
         "description": "An ordinary page. Shows what a quiet scan looks like.",
@@ -166,7 +211,8 @@ def create_app(
 ) -> FastAPI:
     active_settings = settings or Settings.from_env()
     active_runner = runner or build_runner(active_settings)
-    manager = ScanManager(active_settings, active_runner, verdict_engine)
+    engine = verdict_engine or build_engine(active_runner, active_settings.data_dir)
+    manager = ScanManager(active_settings, active_runner, engine)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:

@@ -1,6 +1,6 @@
 # Demo video runbook
 
-> **DRAFT.** The AI parts do not exist yet, and nothing here has been rehearsed or run on a VM. Sections marked **[AFTER KICKOFF]** are placeholders. Rewrite this once the agent works, and keep narration to what the screen actually shows.
+> **DRAFT.** The AI agent now exists but has not run against the real model, and nothing here has been rehearsed or run on a VM. Sections marked **[AFTER KICKOFF]** are placeholders. Rewrite this once the agent works, and keep narration to what the screen actually shows.
 
 Target length: **3:40**, under the 4-minute limit. Everything is built on the `hostile-gauntlet` fixture, so no real hostile site or brand appears.
 

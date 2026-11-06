@@ -682,7 +682,7 @@ def test_ui_renders_hostile_strings_inertly(browser: Any, tmp_path: Path) -> Non
         assert page.locator("#blast-rows .row").count() == 8
         assert page.locator("#chamber .spoke-line").count() == 8
         assert page.locator("#chamber").get_attribute("data-walled") == "no"
-        assert "not connected" in page.locator("#verdict-title").inner_text().lower()
+        assert "no ai verdict" in page.locator("#verdict-title").inner_text().lower()
 
         assert "Ignore previous" in page.locator(".concealed-text").inner_text()
         assert "Visible words" in page.locator(".layer-visible").inner_text()

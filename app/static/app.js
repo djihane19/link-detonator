@@ -186,7 +186,7 @@ async function loadFixtures() {
       byId("gauntlet-slot").hidden = true;
     }
     rack.replaceChildren(
-      ...fixtures.filter((fixture) => fixture.name !== "hostile-gauntlet").map(fixtureCard),
+      ...fixtures.filter((fixture) => fixture.name !== "hostile-gauntlet" && !fixture.name.startsWith("lab-")).map(fixtureCard),
     );
   } catch {
     showError(errorBox, "Could not load the test charges. Reload to try again.");
@@ -1095,20 +1095,68 @@ function jolt(wallGroup) {
 
 /* ------------------------------------------------------------------ Report: verdict */
 
+const OUTCOME_LABELS = {
+  attempt_detected: "Attempt detected",
+  denied_by_policy: "Denied by policy",
+  blocked_by_enforcement: "Blocked by enforcement",
+  completed: "Completed",
+  unknown: "Outcome unknown",
+  not_tested: "Not tested",
+  not_attempted: "Not attempted",
+};
+
+function verdictSection(heading, nodes) {
+  const section = document.createElement("div");
+  section.className = "verdict-section";
+  const title = document.createElement("h3");
+  title.textContent = heading;
+  section.append(title, ...nodes);
+  return section;
+}
+
+function verdictLine(label, text, outcome) {
+  const line = document.createElement("p");
+  line.className = "verdict-line";
+  if (outcome) line.dataset.outcome = outcome;
+  const tag = document.createElement("strong");
+  tag.textContent = label;
+  line.append(tag, " ", scannedText(text || ""));
+  return line;
+}
+
 function renderVerdict(verdict) {
   const card = byId("verdict-card");
   const title = byId("verdict-title");
   const body = byId("verdict-body");
+  clear(body);
   if (!verdict || verdict.status === "pending" || !verdict.status) {
     card.dataset.status = "pending";
-    title.textContent = "Verdict engine not connected";
-    body.textContent = "No verdict has been issued, and none is implied. Everything on this page is raw evidence, not a judgement.";
+    title.textContent = "No AI verdict for this scan";
+    body.textContent = "The model is not connected or this scan has not been analysed. Everything on this page is raw evidence, not a judgement.";
     return;
   }
-  card.dataset.status = String(verdict.status);
-  title.textContent = String(verdict.status);
-  clear(body);
-  body.append(scannedText(verdict.summary || ""));
+  if (verdict.status === "unavailable") {
+    card.dataset.status = "unavailable";
+    title.textContent = "AI verdict unavailable";
+    body.append(scannedText(verdict.reason || ""));
+    return;
+  }
+  card.dataset.status = String(verdict.classification);
+  title.textContent = String(verdict.classification);
+  const environment = verdict.verification?.environment;
+  const parts = [scannedText(verdict.summary || "")];
+  const opinion = [verdictLine("Model confidence", `${Math.round((verdict.model_confidence || 0) * 100)}% (the model's opinion, not a verified fact)`)];
+  if (verdict.raised_by_rules) opinion.push(verdictLine("Raised by rules", `The model said ${verdict.model_classification}. ${(verdict.manipulation?.reasons || []).join(" ")}`));
+  (verdict.indicators || []).forEach((item) => opinion.push(verdictLine("Indicator", item.claim)));
+  parts.push(verdictSection("AI assessment", opinion));
+  const decisions = (verdict.policy_decisions || []).map((d) => verdictLine(d.allowed ? "Allowed" : "Denied", `${d.kind} ${d.target} (${d.rule})`, d.allowed ? "completed" : "denied_by_policy"));
+  if (decisions.length) parts.push(verdictSection("What the agent asked to do", decisions));
+  const notice = environment === "docker_sandbox" ? "Facts recorded by the host." : "DEV MODE: not sandboxed, so no containment is claimed.";
+  const records = (verdict.verification?.records || [])
+    .filter((r) => r.outcome !== "not_attempted")
+    .map((r) => verdictLine(OUTCOME_LABELS[r.outcome] || r.outcome, `${r.control}: ${r.detail}`, r.outcome));
+  parts.push(verdictSection(`Independent verification. ${notice}`, records));
+  body.append(...parts);
 }
 
 /* ------------------------------------------------------------------ Boot */

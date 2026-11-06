@@ -1208,3 +1208,14 @@ body[data-runner="dev"] .dev-only { display: block; }
   .stamp { border-color: CanvasText; }
   .spoke-line, .wall-segment { stroke: CanvasText; }
 }
+
+/* Verdict detail */
+.verdict-section { margin-top: 20px; }
+.verdict-section h3 { margin: 0 0 8px; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+.verdict-line { margin: 6px 0; overflow-wrap: anywhere; }
+.verdict-line strong { margin-right: 6px; }
+.verdict-line[data-outcome="denied_by_policy"] strong, .verdict-line[data-outcome="blocked_by_enforcement"] strong { color: #7bd88f; }
+.verdict-line[data-outcome="completed"] strong { color: #ff7a66; }
+.verdict-line[data-outcome="attempt_detected"] strong { color: #f5a742; }
+.verdict-line[data-outcome="not_tested"] strong, .verdict-line[data-outcome="unknown"] strong { color: #b8b8b0; }
+.verdict .verdict-section h3 { color: #f1eee2; opacity: 1; font-size: 0.85rem; min-height: 1em; display: block; visibility: visible; }

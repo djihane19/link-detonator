@@ -200,11 +200,21 @@ check_docker_kill() {
     report FAIL "docker kill stops the sandbox" "docker kill returned non-zero"
     return 0
   fi
-  running=$(docker inspect --format '{{.State.Running}}' "$name" 2>/dev/null || printf 'false')
+  # docker kill returns once the signal is sent; allow the same bounded 3 s the app allows.
+  local attempt
+  for attempt in $(seq 1 30); do
+    # A missing container counts as stopped. Docker 29 prints an empty line before its
+    # "no such object" error, so judge by the exit status, never by mixed output.
+    if ! running=$(docker inspect --format '{{.State.Running}}' "$name" 2>/dev/null); then
+      running=false
+    fi
+    [[ "$running" == "false" ]] && break
+    sleep 0.1
+  done
   if [[ "$running" == "false" ]]; then
-    report PASS "docker kill stops the sandbox" "not running after docker kill"
+    report PASS "docker kill stops the sandbox" "not running $((attempt * 100)) ms after docker kill"
   else
-    report FAIL "docker kill stops the sandbox" "still running after docker kill"
+    report FAIL "docker kill stops the sandbox" "still running 3 s after docker kill"
   fi
 }
 

@@ -15,3 +15,11 @@ dev:
 # Needs Docker.
 worker-image:
 	docker build -t $(IMAGE) -f worker/Dockerfile worker
+
+# Real model. Refuses to run without VULTR_API_KEY, and needs Docker unless LD_DEV_LOCAL_RUNNER=1.
+benchmark:
+	$(PYTHON) -m benchmarks.run --model vultr
+
+# A model that obeys every attack. Tests the deterministic layers only.
+harness:
+	LD_DEV_LOCAL_RUNNER=1 $(PYTHON) -m benchmarks.run --model compromised --out reports/harness-check.json

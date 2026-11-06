@@ -462,7 +462,7 @@ def _concealed_text(events: _Events) -> dict[str, Any]:
     return make(
         "observed",
         f"{_plural(total, 'concealed text fragment')} extracted ({breakdown}). "
-        "They have not been classified.",
+        "This row reports them without judging them.",
         layers,
     )
 

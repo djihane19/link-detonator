@@ -550,7 +550,7 @@ def test_concealed_text_is_always_just_observed() -> None:
     assert "2 concealed" in row["detail"]
     assert "comment" in row["detail"] and "hidden_css" in row["detail"]
     assert "ignore previous" not in row["detail"], "attacker text is not echoed into the summary"
-    assert "not been classified" in row["detail"]
+    assert "without judging" in row["detail"]
 
 
 def test_no_concealed_text() -> None:

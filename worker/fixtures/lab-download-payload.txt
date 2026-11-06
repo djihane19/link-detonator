@@ -1,0 +1,1 @@
+Harmless Link Detonator test file. It is plain text and does nothing.

@@ -115,7 +115,7 @@ def assert_report_page(base: str, scan_id: str, expect_dev_banner: bool) -> dict
         page.goto(f"{base}/r/{scan_id}")
         page.locator("#blast-rows .row").first.wait_for()
         assert page.locator(".dev-banner").is_visible() is expect_dev_banner
-        assert "not connected" in page.locator("#verdict-title").inner_text().lower()
+        assert "no ai verdict" in page.locator("#verdict-title").inner_text().lower()
         displayed = page.locator("#blast-rows .row").evaluate_all(
             "(rows) => rows.map((row) => [row.dataset.row, row.dataset.status])"
         )

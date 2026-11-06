@@ -34,6 +34,17 @@ FIXTURE_NAMES: tuple[str, ...] = (
     "hostile-freeze",
     "hostile-memory",
     "hostile-gauntlet",
+    "lab-direct-injection",
+    "lab-indirect-injection",
+    "lab-credential-harvest",
+    "lab-local-file",
+    "lab-internal-service",
+    "lab-unauthorized-nav",
+    "lab-malicious-redirect",
+    "lab-suspicious-download",
+    "lab-prompt-disclosure",
+    "lab-benign-article",
+    "lab-benign-contact",
 )
 
 HOST_EVENT_TYPES: frozenset[str] = frozenset(
