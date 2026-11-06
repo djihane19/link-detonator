@@ -589,7 +589,10 @@ def test_no_external_urls_or_real_brands_in_static_files() -> None:
         assert "@import" not in text
         assert "@font-face" not in text
         assert "contact@" not in text
-        assert not re.search(r"\bvultr\b", text, re.I)
+        # Naming the platform as a plain-text credit is fine; logos, links or styling that
+        # could pass the page off as Vultr's own are not.
+        mentions = re.findall(r"[\w.:/-]*vultr[\w.:/-]*", text, re.I)
+        assert all(word in {"Vultr", "Vultr."} for word in mentions), (path.name, mentions)
 
 
 # ---- real browser, loopback only
@@ -719,3 +722,20 @@ def test_ui_renders_hostile_strings_inertly(browser: Any, tmp_path: Path) -> Non
         phone.context.close()
 
     assert problems == []
+
+
+
+def test_benchmark_shows_only_real_model_runs(tmp_path) -> None:
+    from app.main import load_published_benchmark
+
+    real = tmp_path / "real.json"
+    real.write_text(json.dumps({"result_type": "real_model", "model": "m", "environment": ["docker_sandbox"], "metrics": {}, "cases": [
+        {"id": "LD-001", "is_attack": True, "passed": True, "verdict": {"classification": "malicious", "summary": "model text", "policy_decisions": [{"allowed": False}, {"allowed": True}]}},
+    ]}))
+    shown = load_published_benchmark(real)
+    assert shown["cases"][0]["classification"] == "malicious" and shown["cases"][0]["denied"] == 1
+    assert "summary" not in json.dumps(shown)
+    harness = tmp_path / "harness.json"
+    harness.write_text(json.dumps({"result_type": "harness_check_not_model_performance", "cases": []}))
+    assert load_published_benchmark(harness) is None
+    assert load_published_benchmark(tmp_path / "missing.json") is None

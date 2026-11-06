@@ -48,6 +48,9 @@ class Settings:
     max_events: int = 5000
 
     # Local dev runner (no sandbox, see LocalFixtureRunner)
+    # Each orchestrator removes only its own leftover sandboxes, so a benchmark and the
+    # app on one VM cannot reap each other's scans (seen on the VM, 2026-11-06).
+    owner: str = "app"
     dev_local_runner: bool = False
     bind_host: str = "127.0.0.1"
     worker_path: Path = PROJECT_ROOT / "worker" / "worker.py"
@@ -115,6 +118,7 @@ class Settings:
             max_line_bytes=_positive_int(source, "LD_MAX_LINE_BYTES", defaults.max_line_bytes),
             max_total_bytes=_positive_int(source, "LD_MAX_TOTAL_BYTES", defaults.max_total_bytes),
             max_events=_positive_int(source, "LD_MAX_EVENTS", defaults.max_events),
+            owner=_owner(source),
             dev_local_runner=_flag(source, "LD_DEV_LOCAL_RUNNER", defaults.dev_local_runner),
             bind_host=_text(source, "LD_BIND_HOST", defaults.bind_host),
             worker_path=Path(_text(source, "LD_WORKER_PATH", str(defaults.worker_path))),
@@ -175,3 +179,10 @@ def _names(env: Mapping[str, str], name: str, default: tuple[str, ...]) -> tuple
     if name not in env:
         return default
     return tuple(part.strip() for part in env[name].split(",") if part.strip())
+
+
+def _owner(env: Mapping[str, str]) -> str:
+    value = env.get("LD_OWNER", "app").strip() or "app"
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,30}", value):
+        raise ValueError("LD_OWNER must be lower-case letters, digits and dashes")
+    return value

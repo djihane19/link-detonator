@@ -126,6 +126,10 @@ def build_runner(settings: Settings) -> SandboxRunner:
     return LocalFixtureRunner(settings) if settings.dev_local_runner else DockerRunner(settings)
 
 
+def owner_label(settings: Settings) -> str:
+    return f"link-detonator.owner={settings.owner}"
+
+
 def container_name(scan_id: str) -> str:
     name = f"ld-{scan_id}"
     if not _DOCKER_NAME.fullmatch(name):
@@ -161,6 +165,7 @@ def build_docker_argv(
         settings.docker_bin, "run", "--rm", "--init",
         "--name", name,
         "--label", SANDBOX_LABEL,
+        "--label", owner_label(settings),
         "--network", SANDBOX_NETWORK,
         "--read-only",
         "--tmpfs", SANDBOX_TMPFS,
@@ -548,9 +553,11 @@ class DockerRunner:
         await _DockerScan(self._settings, scan_id, target, emit, self._canary).execute()
 
     async def reap(self) -> int:
-        """Removes every labelled container. Must only run before any scan starts."""
+        """Removes this owner's labelled containers. Must only run before any scan starts."""
         client = _DockerClient(self._settings)
-        listing = await client.command("ps", "-aq", "--filter", f"label={SANDBOX_LABEL}")
+        listing = await client.command(
+            "ps", "-aq", "--filter", f"label={SANDBOX_LABEL}", "--filter", f"label={owner_label(self._settings)}"
+        )
         if listing.returncode != 0:
             logger.warning("reaper could not list sandboxes")
             return 0

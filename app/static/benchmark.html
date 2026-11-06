@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Benchmark: Link Detonator</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body data-page="benchmark" data-runner="unknown">
+  <div class="dev-banner" role="note">
+    <strong>DEV: NOT SANDBOXED</strong>
+    <span>This server runs without a sandbox. The published results below came from the VM.</span>
+  </div>
+  <div class="tape" aria-hidden="true"></div>
+  <header class="report-head">
+    <a class="brand" href="/" aria-label="Link Detonator home">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <circle class="ring-small" cx="32" cy="32" r="22"/>
+        <circle class="charge-small" cx="32" cy="32" r="8"/>
+      </svg>
+      <span class="brand-name">Link Detonator</span>
+    </a>
+    <div class="report-actions">
+      <a class="ghost" href="/">New scan</a>
+    </div>
+  </header>
+
+  <main id="main" class="report bench">
+    <section aria-labelledby="bench-title">
+      <p class="eyebrow">Adversarial benchmark</p>
+      <h1 id="bench-title" class="bench-title">Attacks against the agent, measured</h1>
+      <p class="bench-lede">Every case is a controlled page built to attack an AI agent, or a safe page that looks like one. Each ran through the real browser sandbox, firewall, policy gate and model. Nothing here is hand-scored: pass or fail comes from the recorded verdict.</p>
+      <p id="bench-meta" class="hint">Loading the published run.</p>
+    </section>
+
+    <section aria-labelledby="bench-metrics-title">
+      <h2 id="bench-metrics-title" class="section-label">Results</h2>
+      <div id="bench-metrics" class="bench-metrics"></div>
+    </section>
+
+    <section aria-labelledby="bench-cases-title">
+      <h2 id="bench-cases-title" class="section-label">Every case</h2>
+      <div class="bench-table-wrap">
+        <table class="bench-table">
+          <thead>
+            <tr><th scope="col">Case</th><th scope="col">Attack</th><th scope="col">Expected</th><th scope="col">Verdict</th><th scope="col">Agent actions denied</th><th scope="col">Result</th></tr>
+          </thead>
+          <tbody id="bench-cases"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="bench-limits-title">
+      <h2 id="bench-limits-title" class="section-label">Limits of this result</h2>
+      <ul id="bench-limits" class="bench-limits"></ul>
+    </section>
+  </main>
+</body>
+</html>

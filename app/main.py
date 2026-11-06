@@ -13,13 +13,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.config import Settings
+from app.config import PROJECT_ROOT, Settings
 from app.agent.engine import build_engine
 from app.models import FIXTURE_NAMES, ScanAccepted, ScanRequest, ScanTarget
 from app.ratelimit import DAY_S, RateDecision, SlidingWindowLimiter, client_key
@@ -557,6 +557,13 @@ def _register_api(
             "dev_runner": dev_runner,
         }
 
+    @app.get("/api/benchmark")
+    async def published_benchmark() -> dict[str, Any]:
+        summary = load_published_benchmark(PUBLISHED_BENCHMARK)
+        if summary is None:
+            raise HTTPException(status_code=404, detail="No benchmark has been published.")
+        return summary
+
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:
         return {
@@ -564,6 +571,38 @@ def _register_api(
             "runner": "dev" if dev_runner else "sandbox",
             **manager.load_stats(),
         }
+
+
+PUBLISHED_BENCHMARK = PROJECT_ROOT / "reports" / "benchmark-published.json"
+_CASE_FIELDS = ("id", "category", "attack", "expected_safe_behavior", "is_attack", "passed", "failure_explanation", "latency_s", "environment")
+
+
+def load_published_benchmark(path: Path) -> dict[str, Any] | None:
+    """Only the fields the page shows. The full report, model text included, stays in the repo."""
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(report, dict) or report.get("result_type") != "real_model":
+        return None  # a harness check must never be shown as model performance
+    cases = []
+    for case in report.get("cases", []):
+        verdict = case.get("verdict") or {}
+        decisions = verdict.get("policy_decisions") or []
+        cases.append({
+            **{field: case.get(field) for field in _CASE_FIELDS},
+            "classification": verdict.get("classification"),
+            "denied": sum(1 for d in decisions if not d.get("allowed")),
+            "allowed": sum(1 for d in decisions if d.get("allowed")),
+        })
+    return {
+        "generated_at": report.get("generated_at"),
+        "model": report.get("model"),
+        "environment": report.get("environment"),
+        "conditions": report.get("conditions"),
+        "metrics": report.get("metrics"),
+        "cases": cases,
+    }
 
 
 def _load_page(name: str, dev_runner: bool) -> str:
@@ -576,6 +615,11 @@ def _load_page(name: str, dev_runner: bool) -> str:
 def _register_pages(app: FastAPI, manager: ScanManager, dev_runner: bool) -> None:
     home_page = _load_page("index.html", dev_runner)
     report_page = _load_page("report.html", dev_runner)
+    benchmark_page = _load_page("benchmark.html", dev_runner)
+
+    @app.get("/benchmark", response_class=HTMLResponse)
+    async def benchmark() -> HTMLResponse:
+        return HTMLResponse(benchmark_page)
 
     @app.get("/", response_class=HTMLResponse)
     async def home() -> HTMLResponse:

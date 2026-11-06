@@ -239,3 +239,16 @@ def test_reasoning_effort_is_sent_and_exhausted_budget_is_named(tmp_path: Path, 
         run(client_with(handler, tmp_path, monkeypatch).analyse([]))
     assert "token budget" in str(caught.value) and len(bodies) == 1
     assert bodies[0]["reasoning_effort"] == "low" and bodies[0]["max_tokens"] == 4000
+
+
+def test_page_initiated_actions_are_stated_as_facts() -> None:
+    from app.agent.evidence import build_view
+
+    events = [
+        {"seq": 1, "type": "navigation", "data": {"url": "http://a.test/", "status": 200, "redirected_from": None}},
+        {"seq": 2, "type": "popup", "data": {"url": "http://b.test/offer"}},
+        {"seq": 3, "type": "navigation", "data": {"url": "http://c.test/landing", "status": None, "redirected_from": "http://a.test/"}},
+    ]
+    actions = build_view(events, include_concealed=True)["page_initiated_actions"]
+    assert [n["url"] for n in actions["navigations_after_load"]] == ["http://c.test/landing"]
+    assert actions["popups_opened"][0]["url"] == "http://b.test/offer" and "never clicked" in actions["note"]

@@ -1159,10 +1159,96 @@ function renderVerdict(verdict) {
   body.append(...parts);
 }
 
+/* ------------------------------------------------------------------ Benchmark */
+
+const METRIC_LABELS = [
+  ["attack_detection_rate", "Attacks detected", "higher is better"],
+  ["false_positive_rate", "False alarms on safe pages", "lower is better"],
+  ["unauthorized_action_prevention_rate", "Unauthorized agent actions blocked", "higher is better"],
+  ["secret_exfiltration_prevention_rate", "Scans with no planted-secret leak", "higher is better"],
+  ["incomplete_investigations", "Incomplete investigations", "lower is better"],
+];
+
+function metricTile(label, value, note, definition) {
+  const tile = document.createElement("div");
+  tile.className = "bench-metric";
+  const number = document.createElement("p");
+  number.className = "bench-number";
+  number.textContent = value;
+  const name = document.createElement("p");
+  name.className = "bench-name";
+  name.textContent = label;
+  const small = document.createElement("p");
+  small.className = "hint";
+  small.textContent = definition ? `${note}. ${definition}` : note;
+  tile.append(number, name, small);
+  return tile;
+}
+
+function ratio(metric) {
+  if (!metric || metric.denominator === undefined) return "n/a";
+  return `${metric.numerator} / ${metric.denominator}`;
+}
+
+function cell(text) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  return td;
+}
+
+async function initBenchmark() {
+  let data;
+  try {
+    data = await fetchJson("/api/benchmark");
+  } catch (error) {
+    byId("bench-meta").textContent = "No benchmark has been published on this server yet.";
+    return;
+  }
+  const environment = (data.environment || []).join(", ") === "docker_sandbox" ? "the Docker sandbox on a Vultr VM" : (data.environment || []).join(", ");
+  byId("bench-meta").textContent = `Run ${data.generated_at || "unknown"}, model ${data.model}, in ${environment}.`;
+
+  const metrics = data.metrics || {};
+  const tiles = METRIC_LABELS.map(([key, label, note]) => metricTile(label, ratio(metrics[key]), note, metrics[key]?.definition));
+  const latency = metrics.latency_s || {};
+  tiles.push(metricTile("Seconds per scan", `${latency.median ?? "n/a"}`, `median, max ${latency.max ?? "n/a"}`, "From submitting the page to the final verdict, model calls included."));
+  const enforcement = metrics.sandbox_enforcement_events || {};
+  tiles.push(metricTile("Enforcement events", `${enforcement.count ?? 0}`, "blocked by the sandbox or firewall", enforcement.definition));
+  clear(byId("bench-metrics"));
+  byId("bench-metrics").append(...tiles);
+
+  const rows = (data.cases || []).map((item) => {
+    const tr = document.createElement("tr");
+    tr.dataset.result = item.passed ? "pass" : "fail";
+    const result = cell(item.passed ? "PASS" : `FAIL: ${item.failure_explanation || ""}`);
+    result.className = "bench-result";
+    tr.append(
+      cell(`${item.id} ${String(item.category || "").replaceAll("_", " ")}`),
+      cell(item.attack || ""),
+      cell(item.expected_safe_behavior || ""),
+      cell(item.classification || "none"),
+      cell(item.denied ? `${item.denied} denied` + (item.allowed ? `, ${item.allowed} allowed` : "") : item.allowed ? `${item.allowed} allowed` : "none proposed"),
+      result,
+    );
+    return tr;
+  });
+  clear(byId("bench-cases"));
+  byId("bench-cases").append(...rows);
+
+  const limits = [
+    data.conditions || "",
+    "These are controlled test pages, not the open web. A small suite cannot predict real-world detection rates.",
+    "The verdict is a model opinion. Containment is enforced and verified separately, by the sandbox, firewall and policy gate.",
+    "Prompt injection cannot be fully prevented in a model. The agent's only permitted action is opening an observed link in a new sandbox.",
+  ].filter(Boolean);
+  clear(byId("bench-limits"));
+  byId("bench-limits").append(...limits.map((text) => { const li = document.createElement("li"); li.textContent = text; return li; }));
+}
+
 /* ------------------------------------------------------------------ Boot */
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
   if (page === "home") initHome();
   if (page === "report") initReport();
+  if (page === "benchmark") initBenchmark();
 });

@@ -1219,3 +1219,24 @@ body[data-runner="dev"] .dev-only { display: block; }
 .verdict-line[data-outcome="attempt_detected"] strong { color: #f5a742; }
 .verdict-line[data-outcome="not_tested"] strong, .verdict-line[data-outcome="unknown"] strong { color: #b8b8b0; }
 .verdict .verdict-section h3 { color: #f1eee2; opacity: 1; font-size: 0.85rem; min-height: 1em; display: block; visibility: visible; }
+
+/* Benchmark page */
+.bench { display: grid; gap: 40px; padding-bottom: 64px; }
+.bench-title { font-family: var(--font-stencil); font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1; margin: 6px 0 14px; text-transform: uppercase; letter-spacing: 0.02em; }
+.bench-lede { max-width: 70ch; color: var(--dust); margin: 0 0 10px; }
+.section-label { font-family: var(--font-stencil); font-size: 1.3rem; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 14px; }
+.bench-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.bench-metric { border: 1px solid var(--line); background: var(--soot); padding: 16px; }
+.bench-number { font-family: var(--font-stencil); font-size: 2.4rem; line-height: 1; margin: 0 0 6px; color: var(--tape); }
+.bench-name { margin: 0 0 6px; font-weight: 600; }
+.bench-table-wrap { overflow-x: auto; border: 1px solid var(--line); }
+.bench-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 760px; }
+.bench-table th, .bench-table td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.bench-table th { font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dust); background: var(--soot); }
+.bench-table tr[data-result="pass"] .bench-result { color: var(--contained); font-weight: 700; }
+.bench-table tr[data-result="fail"] .bench-result { color: var(--failed); font-weight: 700; }
+.bench-limits { color: var(--dust); max-width: 80ch; padding-left: 20px; }
+.bench-limits li { margin: 6px 0; }
+.text-link { color: var(--tape); text-decoration: underline; text-underline-offset: 3px; }
+.text-link:hover, .text-link:focus-visible { color: var(--bone); }
+.bench > * { min-width: 0; }

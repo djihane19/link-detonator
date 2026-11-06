@@ -393,10 +393,11 @@ def cmd_rm(args: list[str]) -> None:
 def cmd_ps(args: list[str]) -> None:
     if CONFIG.get("ps_fails"):
         daemon_down()
-    wanted = value_after(args, "--filter").removeprefix("label=")
+    # Like docker, every --filter must match.
+    wanted = [args[i + 1].removeprefix("label=") for i, arg in enumerate(args[:-1]) if arg == "--filter"]
     for path in CONTAINERS.glob("*.json"):
         info = json.loads(path.read_text())
-        if wanted in info.get("labels", []):
+        if all(label in info.get("labels", []) for label in wanted):
             print(info["id"])
     if CONFIG.get("ps_hostile_output"):
         print("--privileged")

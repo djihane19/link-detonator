@@ -107,7 +107,7 @@ async def run_case(manager: ScanManager, case: Mapping[str, Any]) -> dict[str, A
 
 async def run(model: str, only: list[str] | None, data_dir: Path) -> dict[str, Any]:
     settings = Settings.from_env()
-    settings = type(settings)(**{**settings.__dict__, "data_dir": data_dir, "concurrency": 1, "queue_size": 50})
+    settings = type(settings)(**{**settings.__dict__, "data_dir": data_dir, "concurrency": 1, "queue_size": 50, "owner": "benchmark"})
     runner = build_runner(settings)
     agent_settings = AgentSettings.from_env()
     client: ChatClient

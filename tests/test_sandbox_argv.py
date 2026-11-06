@@ -52,7 +52,7 @@ def exact_argv(name: str, image: str, *rest: str) -> list[str]:
     """The contract's argv, written out by hand so a code change cannot move both sides."""
     return [
         "docker", "run", "--rm", "--init", "--name", name,
-        "--label", "link-detonator=1", "--network", "ld-sandbox",
+        "--label", "link-detonator=1", "--label", "link-detonator.owner=app", "--network", "ld-sandbox",
         "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=256m",
         "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
         "--pids-limit", "256", "--memory", "1g", "--memory-swap", "1g", "--cpus", "1",

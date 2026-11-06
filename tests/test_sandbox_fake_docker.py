@@ -559,17 +559,20 @@ async def test_no_docker_process_outlives_the_scan(
 async def test_reaper_removes_only_labelled_containers(fake_docker: Any) -> None:
     labelled_id = "a" * 64
     other_labelled_id = "b" * 64
-    fake_docker.add_container("ld-old-1", labelled_id, ["link-detonator=1"])
-    fake_docker.add_container("ld-old-2", other_labelled_id, ["link-detonator=1"])
+    mine = ["link-detonator=1", "link-detonator.owner=app"]
+    fake_docker.add_container("ld-old-1", labelled_id, mine)
+    fake_docker.add_container("ld-old-2", other_labelled_id, mine)
     fake_docker.add_container("someone-elses", "c" * 64, ["other=1"])
+    fake_docker.add_container("ld-benchmark", "d" * 64, ["link-detonator=1", "link-detonator.owner=benchmark"])
 
     removed = await DockerRunner(fake_docker.settings()).reap()
 
     assert removed == 2
+    assert fake_docker.container_exists("ld-benchmark")
     assert not fake_docker.container_exists("ld-old-1")
     assert not fake_docker.container_exists("ld-old-2")
     assert fake_docker.container_exists("someone-elses")
-    assert fake_docker.call_for("ps")["argv"] == ["ps", "-aq", "--filter", "label=link-detonator=1"]
+    assert fake_docker.call_for("ps")["argv"] == ["ps", "-aq", "--filter", "label=link-detonator=1", "--filter", "label=link-detonator.owner=app"]
 
 
 async def test_reaper_with_nothing_to_do(fake_docker: Any) -> None:
@@ -584,7 +587,7 @@ async def test_reaper_survives_a_daemon_outage(fake_docker: Any) -> None:
 
 async def test_reaper_ignores_output_that_is_not_a_container_id(fake_docker: Any) -> None:
     fake_docker.configure(ps_hostile_output=True)
-    fake_docker.add_container("ld-old", "a" * 64, ["link-detonator=1"])
+    fake_docker.add_container("ld-old", "a" * 64, ["link-detonator=1", "link-detonator.owner=app"])
     assert await DockerRunner(fake_docker.settings()).reap() == 1
     rm_targets = [call["argv"][-1] for call in fake_docker.calls() if call["argv"][0] == "rm"]
     assert "--privileged" not in rm_targets
@@ -592,7 +595,7 @@ async def test_reaper_ignores_output_that_is_not_a_container_id(fake_docker: Any
 
 async def test_reaper_counts_only_verified_removals(fake_docker: Any) -> None:
     fake_docker.configure(rm_fails=True)
-    fake_docker.add_container("ld-old", "a" * 64, ["link-detonator=1"])
+    fake_docker.add_container("ld-old", "a" * 64, ["link-detonator=1", "link-detonator.owner=app"])
     assert await DockerRunner(fake_docker.settings()).reap() == 0
     assert fake_docker.container_exists("ld-old")
 

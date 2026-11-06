@@ -6,7 +6,7 @@ It is a defensive triage tool, and an entry for the lablab.ai "Vultr: Agent Rush
 
 ## AI agent
 
-Written after kickoff, in `app/agent/`. **It has not yet been run against the real model, because no API key has been configured here.** Without `VULTR_API_KEY`, the verdict stays pending; there is no stand-in model in the product.
+Written after kickoff, in `app/agent/`. It runs on the live VM with `glm-5.3-flash` on Vultr Serverless Inference. **Latest real benchmark: 14 of 14 cases, 11 of 11 attacks detected, 0 of 3 false alarms**, all in the Docker sandbox. See `reports/README.md` for all three runs, including the two that failed a case. Without `VULTR_API_KEY`, the verdict stays pending; there is no stand-in model in the product.
 
 The model only proposes. `policy.py` is a deterministic gate that allows one action kind (opening an observed link in a new sandbox), the sandbox and firewall enforce, and `verify.py` reports from recorded facts. Three checks do not depend on the model behaving: a secret planted in the system prompt, a comparison of the verdict with and without the page's hidden text, and pattern detectors on hidden text. They can raise the final class and never lower it. Prompt injection cannot be fully prevented in a model, so nothing here relies on that.
 

@@ -19,7 +19,7 @@ Status as of 2026-11-03, after the first agent build. "Verified" means run here 
 - Dev mode runs with no sandbox. The UI says so and claims no containment.
 
 ## Missing
-- Any run of the real model. Prompts, `response_format` handling and the vision input are unproven on the service.
+- ~~Any run of the real model~~ Done 2026-11-06: three real benchmark runs on the VM; see `reports/README.md`.
 - ~~Any run on a VM~~ Done 2026-11-05: all 40 sandbox checks pass on the VM, and the app is live behind Caddy. See the engineering log.
 - gVisor evaluation, slides, final video, and rollback documentation.
 

@@ -31,3 +31,13 @@ Newest last. Decisions and evidence, for review by another engineer.
 **Bug found on the VM: kill confirmation.** `docker kill` returns once the signal is sent. Docker 29 also prints an empty line before its "no such object" error, so the check's fallback never matched. Measured: a killed sandbox is gone within about 250 ms. Fixes: the check judges by exit status and polls for up to 3 s, and the app polls the same way (`KILL_CONFIRM_POLLS`) before claiming a confirmed kill.
 
 **Live Gauntlet scan on the VM:** downloads, private_network, freeze and destroyed all read `contained` from real evidence. Secrets: clear. Verdict pending, because no inference key is set yet.
+
+## 2026-11-06 and 07
+
+**Real model connected.** First call returned no answer: `glm-5.3-flash` spent all 1500 output tokens reasoning (`finish_reason: length`). Fix: `reasoning_effort: low` and a 4000-token cap, both configurable, plus a named error for an exhausted budget.
+
+**Benchmark runs 1 to 3 (real model, Docker sandbox):** 13/14, 13/14, 14/14. Details in `reports/README.md`.
+- Run 1 missed a page-initiated popup and navigation. Fix: the evidence now lists page-initiated actions as facts, and the prompt says a page's claims about itself are not evidence. A rule that flags popups or redirects was rejected, because ordinary sites do both.
+- Run 2's miss was infrastructure: an app restart's cleanup removed the benchmark's sandbox. Fix: sandboxes carry an owner label, and cleanup removes only its own. The fake Docker ignored all but the first `--filter`, which hid this in tests; it now applies all of them, like Docker.
+
+**Benchmark page** at `/benchmark` shows the published real run. It refuses harness reports, so a test-double result can never appear as model performance.
