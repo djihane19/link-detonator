@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Link Detonator: slides</title>
+<style>
+  @page { size: 1920px 1080px; margin: 0; }
+  :root {
+    --carbon: #0f100c; --soot: #171811; --line: #3a3b2e; --bone: #efe9d9; --dust: #aba796;
+    --tape: #f7c600; --tape-ink: #11120d; --green: #4ad79c; --amber: #ff9d2e; --red: #ff4a3d; --blue: #9cc4d6;
+    --stencil: "DIN Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--carbon); color: var(--bone); font-family: var(--mono); }
+  .slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; padding: 110px 120px 90px; page-break-after: always; break-after: page;
+    background: var(--carbon) linear-gradient(rgb(239 233 217 / 0.03) 1px, transparent 1px) 0 0 / 48px 48px; }
+  .slide::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 26px;
+    background: repeating-linear-gradient(-45deg, var(--tape) 0 22px, var(--tape-ink) 22px 44px); }
+  .num { position: absolute; bottom: 44px; right: 120px; color: var(--dust); font-size: 22px; }
+  .brand { position: absolute; bottom: 44px; left: 120px; color: var(--dust); font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .eyebrow { color: var(--tape); font-size: 26px; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 18px; }
+  h1, h2 { font-family: var(--stencil); text-transform: uppercase; letter-spacing: 0.02em; line-height: 0.95; margin: 0 0 36px; }
+  h1 { font-size: 190px; }
+  h2 { font-size: 96px; }
+  p, li { font-size: 32px; line-height: 1.45; color: var(--bone); }
+  .muted { color: var(--dust); }
+  ul { padding-left: 34px; margin: 0; }
+  li { margin: 0 0 18px; }
+  strong { color: var(--tape); font-weight: 700; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; align-items: start; }
+  .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .card { border: 2px solid var(--line); background: var(--soot); padding: 34px 36px; }
+  .card h3 { font-family: var(--stencil); font-size: 46px; text-transform: uppercase; margin: 0 0 14px; letter-spacing: 0.03em; }
+  .card p { font-size: 27px; margin: 0; color: var(--dust); }
+  .card .step { font-family: var(--stencil); font-size: 64px; color: var(--tape); line-height: 1; margin-bottom: 10px; }
+  img.shot { width: 100%; border: 2px solid var(--line); display: block; }
+  .big { font-family: var(--stencil); font-size: 150px; line-height: 0.9; color: var(--tape); }
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px; margin-bottom: 40px; }
+  .metric { border: 2px solid var(--line); background: var(--soot); padding: 26px 28px; }
+  .metric .big { font-size: 110px; }
+  .metric p { font-size: 25px; margin: 10px 0 0; color: var(--dust); }
+  table { border-collapse: collapse; width: 100%; font-size: 27px; }
+  th, td { text-align: left; padding: 14px 18px; border-bottom: 2px solid var(--line); }
+  th { color: var(--dust); font-size: 21px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; align-items: stretch; margin: 10px 0 46px; }
+  .flow div { border: 2px solid var(--line); background: var(--soot); padding: 24px 22px; font-size: 25px; position: relative; }
+  .flow div b { display: block; font-family: var(--stencil); font-size: 40px; text-transform: uppercase; color: var(--bone); margin-bottom: 8px; }
+  .flow div.trust { border-color: var(--tape); }
+  .flow div.hostile { border-color: var(--red); }
+  .flow div + div { border-left: none; }
+  .tag { display: inline-block; font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 10px; border: 2px solid; margin-top: 10px; }
+  .tag.green { color: var(--green); } .tag.red { color: var(--red); } .tag.amber { color: var(--amber); } .tag.yellow { color: var(--tape); }
+  .quote { font-family: var(--stencil); font-size: 78px; text-transform: uppercase; line-height: 1.05; color: var(--bone); margin: 0; }
+  .quote em { color: var(--tape); font-style: normal; }
+  .links p { font-size: 36px; margin: 0 0 22px; }
+  .links b { color: var(--tape); display: inline-block; width: 300px; }
+</style>
+</head>
+<body>
+
+<section class="slide">
+  <p class="eyebrow">Vultr Agent Rush · Blast Radius Zero · Team RINVIDA</p>
+  <h1>Link<br>Detonator</h1>
+  <p class="quote" style="font-size:64px">An AI agent that investigates<br>hostile links <em>without trusting them.</em></p>
+  <p class="muted" style="margin-top:50px">Live at 185.92.220.83.sslip.io · github.com/djihane19/link-detonator</p>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">The problem</p>
+  <h2>The page attacks the agent</h2>
+  <div class="cols">
+    <ul>
+      <li>AI agents now browse, read and act on web pages for us.</li>
+      <li>Every page is <strong>attacker-controlled input</strong>: hidden instructions, fake logins, forced downloads, requests to internal servers.</li>
+      <li>Phishing increasingly arrives as <strong>QR codes</strong>, which people cannot read before scanning.</li>
+    </ul>
+    <ul>
+      <li>Security teams triage reported links by hand, or in tools that only score the destination.</li>
+      <li>An agent that obeys a page can be steered to leak secrets or reach the cloud metadata service.</li>
+      <li>The question is not only <em style="color:var(--tape);font-style:normal">is this link bad?</em> but <strong>can it hurt the thing investigating it?</strong></li>
+    </ul>
+  </div>
+  <span class="brand">Link Detonator</span><span class="num">02</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">What it does</p>
+  <h2>Detonate · judge · verify</h2>
+  <div class="cols-3">
+    <div class="card"><div class="step">01</div><h3>Detonate</h3><p>A link or QR code opens in a throwaway browser, in a container behind a firewall on Vultr. It never clicks, types or submits.</p></div>
+    <div class="card"><div class="step">02</div><h3>The AI judges, the rules decide</h3><p>A model on Vultr Serverless Inference reads the evidence and proposes. A deterministic rule engine allows or denies every action.</p></div>
+    <div class="card"><div class="step">03</div><h3>Evidence you can verify</h3><p>The report separates what the page attempted, what the rules denied and what the sandbox contained. The container is destroyed, and that is checked.</p></div>
+  </div>
+  <span class="brand">Link Detonator</span><span class="num">03</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Live result · the Gauntlet</p>
+  <h2 style="margin-bottom:26px">One page, many attacks</h2>
+  <img class="shot" src="img/gauntlet-verdict.png" alt="Verdict for the Gauntlet test page" style="width:1680px;height:640px;object-fit:cover;object-position:top">
+  <span class="brand">Link Detonator</span><span class="num">04</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Blast Radius · from recorded evidence</p>
+  <div class="cols" style="grid-template-columns: 1.15fr 0.85fr; gap:56px">
+    <img class="shot" src="img/gauntlet-blast.png" alt="Blast Radius panel">
+    <div>
+      <h2 style="font-size:84px">Contained, and proved</h2>
+      <ul>
+        <li>Requests to private networks and metadata: <strong>blocked by the firewall</strong>, with the browser's real error.</li>
+        <li>Download: never kept. Frozen page: survived.</li>
+        <li>Hidden instructions: extracted, shown, not obeyed.</li>
+        <li>A row says <span style="color:var(--green)">contained</span> only when host-recorded events prove it.</li>
+      </ul>
+    </div>
+  </div>
+  <span class="brand">Link Detonator</span><span class="num">05</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Architecture and trust boundaries</p>
+  <h2>The model cannot grant itself anything</h2>
+  <div class="flow">
+    <div><b>Browser UI</b>Shows evidence as plain text. Strict CSP.</div>
+    <div class="trust"><b>Orchestrator</b>FastAPI on a Vultr VM. Assigns every event. <span class="tag yellow">trusted</span></div>
+    <div><b>AI agent</b>glm-5.3-flash on Vultr Serverless Inference. <span class="tag amber">proposes only</span></div>
+    <div class="trust"><b>Rule engine</b>One action allowed: open an observed link in a new sandbox. <span class="tag yellow">decides</span></div>
+    <div class="hostile"><b>Sandbox</b>Chromium in Docker behind an iptables egress firewall. <span class="tag red">hostile</span></div>
+  </div>
+  <div class="cols">
+    <ul>
+      <li><strong>No security control depends on the model.</strong> Network, filesystem, limits and secrets are enforced by the runtime.</li>
+      <li>Page content reaches the model only as data, inside a marked untrusted block.</li>
+    </ul>
+    <ul>
+      <li>Three checks that ignore the model's opinion: a planted secret, a with and without hidden text comparison, and hidden-text patterns. They can <strong>raise</strong> a verdict, never lower it.</li>
+    </ul>
+  </div>
+  <span class="brand">Link Detonator</span><span class="num">06</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Proof of containment · live VM</p>
+  <h2>40 of 40 sandbox checks pass</h2>
+  <div class="cols">
+    <ul>
+      <li>Real containers with the app's exact flags, real network attempts. Nothing mocked.</li>
+      <li>Each "blocked" check also requires the <strong>firewall rule's packet counter to rise</strong>.</li>
+      <li>Metadata, RFC1918, CGNAT, host and own public IP: blocked. Public HTTPS: allowed.</li>
+    </ul>
+    <ul>
+      <li>Read-only rootfs, no capabilities, non-root, no mounts, no secrets in the container, including the AI key.</li>
+      <li>Memory limit kills at 1 GB, pid limit at 256, a killed sandbox is gone within about 250 ms.</li>
+      <li class="muted">Raw output: docs/VERIFICATION.md</li>
+    </ul>
+  </div>
+  <span class="brand">Link Detonator</span><span class="num">07</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Adversarial benchmark · real model, real sandbox</p>
+  <h2>Attacks against the agent, measured</h2>
+  <div class="metrics">
+    <div class="metric"><div class="big">11/11</div><p>attacks detected</p></div>
+    <div class="metric"><div class="big">0/3</div><p>false alarms on safe pages</p></div>
+    <div class="metric"><div class="big">4/4</div><p>unauthorized agent actions blocked</p></div>
+    <div class="metric"><div class="big">14/14</div><p>scans with no planted-secret leak</p></div>
+  </div>
+  <table>
+    <tr><th>Run</th><th>Passed</th><th>What we learned</th></tr>
+    <tr><td>1</td><td>13 / 14</td><td>Model trusted a page's own "test page" label. Fix: page claims are not evidence.</td></tr>
+    <tr><td>2</td><td>13 / 14</td><td>An app restart removed a benchmark sandbox. Fix: sandboxes tagged by owner.</td></tr>
+    <tr><td>3</td><td>14 / 14</td><td>All fixes in place.</td></tr>
+    <tr><td>4</td><td>14 / 14</td><td>Re-run after QR input and UI changes: no regressions.</td></tr>
+  </table>
+  <span class="brand">Link Detonator</span><span class="num">08</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">QR codes</p>
+  <div class="cols" style="grid-template-columns: 0.95fr 1.05fr; gap:60px">
+    <div>
+      <h2 style="font-size:88px">Quishing, contained</h2>
+      <ul>
+        <li>The image is decoded in a container with <strong>no network</strong>. The app never parses it.</li>
+        <li>Nothing opens until you click. Then the normal pipeline runs.</li>
+        <li>Metadata and private addresses: refused. <code>javascript:</code> and <code>data:</code> links: never opened. Wi-Fi passwords: hidden.</li>
+      </ul>
+    </div>
+    <img class="shot" src="img/qr-report.png" alt="QR scan verdict" style="margin-top:40px">
+  </div>
+  <span class="brand">Link Detonator</span><span class="num">09</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Who pays</p>
+  <h2>Built for security teams</h2>
+  <div class="cols">
+    <ul>
+      <li><strong>IT and security teams</strong> that get "is this link safe?" from staff, every day.</li>
+      <li><strong>Managed security providers</strong> triaging reported phishing for many clients.</li>
+      <li>Every report is evidence a person can check and act on, not just a score.</li>
+    </ul>
+    <ul>
+      <li>Pricing: per seat for teams, or per scan through an API.</li>
+      <li>Next: forward-an-email intake, gVisor for a second isolation layer, a larger public benchmark.</li>
+      <li class="muted">Honest limits: shared host kernel, Chromium runs without its own sandbox inside the container, a 14-case suite.</li>
+    </ul>
+  </div>
+  <span class="brand">Link Detonator</span><span class="num">10</span>
+</section>
+
+<section class="slide">
+  <p class="eyebrow">Try it</p>
+  <h2>Evidence over claims</h2>
+  <div class="links">
+    <p><b>Live app</b>https://185.92.220.83.sslip.io</p>
+    <p><b>Benchmark</b>https://185.92.220.83.sslip.io/benchmark</p>
+    <p><b>Code</b>https://github.com/djihane19/link-detonator</p>
+    <p><b>Start with</b>"Run the Gauntlet", then a QR code from demo/qr/</p>
+  </div>
+  <p class="quote" style="margin-top:60px;font-size:60px">The page tries to steer the AI.<br><em>The AI does not control its own boundaries.</em></p>
+  <span class="brand">Team RINVIDA</span><span class="num">11</span>
+</section>
+
+</body>
+</html>

@@ -1,8 +1,21 @@
 # Link Detonator
 
-Link Detonator opens a suspicious link in a throwaway browser container and returns the evidence: screenshots, redirects, requests, downloads, forms and hidden text. It also shows what the page tried to do and whether the sandbox stopped it. The container is then destroyed, and that destruction is checked.
+**An AI agent that investigates hostile links without trusting them.** It opens a suspicious link or QR code in a throwaway browser, inside a container behind a firewall on Vultr. The AI reads the evidence and proposes; a deterministic rule engine decides what may run; the sandbox and firewall enforce; and the report shows what the page attempted, what was blocked and what was verified. The container is then destroyed, and that destruction is checked.
 
-It is a defensive triage tool, and an entry for the lablab.ai "Vultr: Agent Rush" hackathon (Blast Radius Zero challenge, browser pattern).
+Built for the lablab.ai "Vultr: Agent Rush" hackathon (Blast Radius Zero challenge, browser pattern). Team RINVIDA.
+
+## Judges start here (2 minutes)
+
+| | |
+|---|---|
+| **Live app** | https://185.92.220.83.sslip.io |
+| **1. Run the Gauntlet** | Click "Run the Gauntlet" on the home page: one page that attacks the agent several ways at once. Watch the Blast Radius fill in, then read the verdict at the top. No access code needed. |
+| **2. Scan a QR code** | Upload `demo/qr/1-fake-bank-login.png`, decode, then investigate. Then try `4-cloud-metadata-refused.png`: it is refused before anything runs. |
+| **3. Benchmark** | https://185.92.220.83.sslip.io/benchmark shows real attacks against the agent, measured. History of all runs: [reports/README.md](reports/README.md) |
+| **4. Proof of containment** | [docs/VERIFICATION.md](docs/VERIFICATION.md): raw output of 40 sandbox and firewall checks on the live VM, and what they do not prove |
+| **Design and trade-offs** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md), [docs/AUDIT.md](docs/AUDIT.md) |
+
+Test pages and test QR codes need no code. Live links on the open web need an access code, so strangers cannot use the server to attack other sites or spend its credit.
 
 ## AI agent
 
