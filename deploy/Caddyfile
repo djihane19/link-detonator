@@ -4,8 +4,14 @@
 # Set LD_SITE_ADDRESS when running provision.sh to use your own domain.
 
 __LD_SITE_ADDRESS__ {
-	# The API only accepts small JSON bodies.
-	request_body {
+	# QR uploads may be images up to 5 MB (the app enforces that exactly); every other
+	# endpoint only accepts small JSON bodies.
+	@qr_upload path /api/qr
+	request_body @qr_upload {
+		max_size 6MB
+	}
+	@small_bodies not path /api/qr
+	request_body @small_bodies {
 		max_size 64KB
 	}
 

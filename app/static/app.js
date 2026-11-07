@@ -261,6 +261,7 @@ async function refusalMessage(response) {
   } catch {
     /* Fall through to the generic message. */
   }
+  if (response.status === 413) return "The image is too large to upload. Try a smaller photo or a screenshot.";
   return response.status === 503 ? "The server is busy. Try again in a minute." : "That request was refused.";
 }
 

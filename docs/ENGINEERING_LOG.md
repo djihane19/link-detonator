@@ -57,3 +57,7 @@ Newest last. Decisions and evidence, for review by another engineer.
 **Result, 3 runs:** the naive agent called 2, 2 and 1 of 11 attacks safe, each time on the prompt-injection pages or the self-navigating page. Link Detonator, run 4: 0 of 11.
 
 **A scoring correction before publishing:** the first rule counted opening `http://elsewhere.invalid/...` as dangerous, because the URL policy refuses that name. That overstated it, since the name cannot resolve. The rule now counts only non-browsing tools, non-http schemes and private, loopback or metadata addresses. With it the naive agent made no dangerous proposals, and we make no claim about that.
+
+## 2026-11-07: QR uploads blocked by the proxy
+
+A tablet's camera upload was refused with a generic message. Caddy's `request_body` limit was 64 KB for every route, set before QR uploads existed, so photos never reached the app. The app tests call the app directly and could not see it. Fix: 6 MB on `/api/qr` only, with the app still enforcing exactly 5 MB, and 64 KB elsewhere. Checked through the public address with a 1 MB phone-style photo (decoded), and a 100 KB JSON body to `/api/scans` (still refused). A 413 now shows "image too large" instead of "request was refused".
