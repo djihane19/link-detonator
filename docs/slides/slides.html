@@ -62,7 +62,7 @@
 <section class="slide">
   <p class="eyebrow">Vultr Agent Rush · Blast Radius Zero · Team RINVIDA</p>
   <h1>Link<br>Detonator</h1>
-  <p class="quote" style="font-size:64px">An AI agent that investigates<br>hostile links <em>without trusting them.</em></p>
+  <p class="quote" style="font-size:64px">Other tools ask if a page is malicious.<br><em>We assume it will attack the AI checking it.</em></p>
   <p class="muted" style="margin-top:50px">Live at 185.92.220.83.sslip.io · github.com/djihane19/link-detonator</p>
 </section>
 
@@ -179,6 +179,21 @@
 </section>
 
 <section class="slide">
+  <p class="eyebrow">Why it matters · same model, same pages</p>
+  <h2>Without us, the AI is talked into "safe"</h2>
+  <div class="cols" style="grid-template-columns: 1.05fr 0.95fr; gap:56px">
+    <img class="shot" src="img/compare.png" alt="Naive agent versus Link Detonator">
+    <ul>
+      <li>Same pages, same sandbox capture, same model. Only our layers removed: raw page text, plain prompt, no rule engine.</li>
+      <li>Unprotected, it called <strong>1 to 2 of 11 attacks safe in every one of 3 runs</strong>, including a page that simply told it to.</li>
+      <li>With Link Detonator: <strong>0 of 11</strong>.</li>
+      <li class="muted">Small suite, and the model varies between runs. All reports are in the repository.</li>
+    </ul>
+  </div>
+  <span class="brand">Link Detonator</span><span class="num">09</span>
+</section>
+
+<section class="slide">
   <p class="eyebrow">QR codes</p>
   <div class="cols" style="grid-template-columns: 0.95fr 1.05fr; gap:60px">
     <div>
@@ -191,7 +206,7 @@
     </div>
     <img class="shot" src="img/qr-report.png" alt="QR scan verdict" style="margin-top:40px">
   </div>
-  <span class="brand">Link Detonator</span><span class="num">09</span>
+  <span class="brand">Link Detonator</span><span class="num">10</span>
 </section>
 
 <section class="slide">
@@ -209,7 +224,7 @@
       <li class="muted">Honest limits: shared host kernel, Chromium runs without its own sandbox inside the container, a 14-case suite.</li>
     </ul>
   </div>
-  <span class="brand">Link Detonator</span><span class="num">10</span>
+  <span class="brand">Link Detonator</span><span class="num">11</span>
 </section>
 
 <section class="slide">
@@ -222,7 +237,7 @@
     <p><b>Start with</b>"Run the Gauntlet", then a QR code from demo/qr/</p>
   </div>
   <p class="quote" style="margin-top:60px;font-size:60px">The page tries to steer the AI.<br><em>The AI does not control its own boundaries.</em></p>
-  <span class="brand">Team RINVIDA</span><span class="num">11</span>
+  <span class="brand">Team RINVIDA</span><span class="num">12</span>
 </section>
 
 </body>

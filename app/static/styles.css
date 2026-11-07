@@ -1316,3 +1316,19 @@ body[data-runner="dev"] .dev-only { display: block; }
 .bench-table .col-result { width: 13%; }
 .bench-verdict, .bench-badge, .bench-id { white-space: nowrap; }
 .bench-table th { white-space: nowrap; }
+
+/* Naive-agent comparison */
+.compare-table { min-width: 640px; table-layout: auto; }
+.compare-table tr[data-kind="ours"] td { color: var(--contained); font-weight: 700; border-top: 2px solid var(--contained); }
+.compare-table tr[data-kind="naive"] td:nth-child(2) { color: var(--failed); font-weight: 700; }
+.bench-table .col-case { width: 13%; }
+.bench-table .col-attack { width: 19%; }
+.bench-table .col-expected { width: 17%; }
+.bench-table .col-verdict { width: 11%; }
+.bench-table .col-naive { width: 15%; }
+.bench-table .col-actions { width: 13%; }
+.bench-table .col-result { width: 12%; }
+.bench-table:not(.compare-table) { min-width: 1120px; }
+.bench-naive { display: flex; flex-wrap: wrap; gap: 4px; }
+.naive-chip { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 6px; border: 1px solid var(--line); color: var(--dust); white-space: nowrap; }
+.naive-chip[data-fooled="true"] { color: var(--failed); border-color: var(--failed); font-weight: 700; }

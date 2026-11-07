@@ -1,6 +1,6 @@
 # Link Detonator
 
-**An AI agent that investigates hostile links without trusting them.** It opens a suspicious link or QR code in a throwaway browser, inside a container behind a firewall on Vultr. The AI reads the evidence and proposes; a deterministic rule engine decides what may run; the sandbox and firewall enforce; and the report shows what the page attempted, what was blocked and what was verified. The container is then destroyed, and that destruction is checked.
+**Other tools ask if a page is malicious. Link Detonator assumes the page will attack the AI checking it.** It opens a suspicious link or QR code in a throwaway browser, inside a container behind a firewall on Vultr. The AI reads the evidence and proposes; a deterministic rule engine decides what may run; the sandbox and firewall enforce; and the report shows what the page attempted, what was blocked and what was verified. The container is then destroyed, and that destruction is checked.
 
 Built for the lablab.ai "Vultr: Agent Rush" hackathon (Blast Radius Zero challenge, browser pattern). Team RINVIDA.
 
@@ -11,7 +11,7 @@ Built for the lablab.ai "Vultr: Agent Rush" hackathon (Blast Radius Zero challen
 | **Live app** | https://185.92.220.83.sslip.io |
 | **1. Run the Gauntlet** | Click "Run the Gauntlet" on the home page: one page that attacks the agent several ways at once. Watch the Blast Radius fill in, then read the verdict at the top. No access code needed. |
 | **2. Scan a QR code** | Upload `demo/qr/1-fake-bank-login.png`, decode, then investigate. Then try `4-cloud-metadata-refused.png`: it is refused before anything runs. |
-| **3. Benchmark** | https://185.92.220.83.sslip.io/benchmark shows real attacks against the agent, measured. History of all runs: [reports/README.md](reports/README.md) |
+| **3. Benchmark** | https://185.92.220.83.sslip.io/benchmark shows real attacks against the agent, measured, plus the same model without our protections: it called 1 to 2 of 11 attacks safe in each of 3 runs; Link Detonator 0 of 11. History: [reports/README.md](reports/README.md) |
 | **4. Proof of containment** | [docs/VERIFICATION.md](docs/VERIFICATION.md): raw output of 40 sandbox and firewall checks on the live VM, and what they do not prove |
 | **Design and trade-offs** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md), [docs/AUDIT.md](docs/AUDIT.md) |
 

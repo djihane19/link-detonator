@@ -656,7 +656,7 @@ def _register_api(
 
     @app.get("/api/benchmark")
     async def published_benchmark() -> dict[str, Any]:
-        summary = load_published_benchmark(PUBLISHED_BENCHMARK)
+        summary = load_published_benchmark(PUBLISHED_BENCHMARK, sorted(PUBLISHED_BENCHMARK.parent.glob(BASELINE_GLOB)))
         if summary is None:
             raise HTTPException(status_code=404, detail="No benchmark has been published.")
         return summary
@@ -671,10 +671,28 @@ def _register_api(
 
 
 PUBLISHED_BENCHMARK = PROJECT_ROOT / "reports" / "benchmark-published.json"
+BASELINE_GLOB = "baseline-naive-*.json"
 _CASE_FIELDS = ("id", "category", "attack", "expected_safe_behavior", "is_attack", "passed", "failure_explanation", "latency_s", "environment")
 
 
-def load_published_benchmark(path: Path) -> dict[str, Any] | None:
+def load_baselines(paths: list[Path]) -> list[dict[str, Any]]:
+    """Naive-agent runs: the same pages and model without Link Detonator's protections."""
+    runs = []
+    for path in paths:
+        try:
+            report = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(report, dict) and report.get("result_type") == "naive_baseline":
+            runs.append({
+                "generated_at": report.get("generated_at"),
+                "summary": report.get("summary"),
+                "classifications": {c.get("id"): c.get("classification") for c in report.get("cases", [])},
+            })
+    return runs
+
+
+def load_published_benchmark(path: Path, baseline_paths: list[Path] | None = None) -> dict[str, Any] | None:
     """Only the fields the page shows. The full report, model text included, stays in the repo."""
     try:
         report = json.loads(path.read_text(encoding="utf-8"))
@@ -699,6 +717,7 @@ def load_published_benchmark(path: Path) -> dict[str, Any] | None:
         "conditions": report.get("conditions"),
         "metrics": report.get("metrics"),
         "cases": cases,
+        "baselines": load_baselines(baseline_paths or []),
     }
 
 

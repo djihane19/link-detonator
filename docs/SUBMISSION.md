@@ -8,7 +8,7 @@ Link Detonator: an AI agent that investigates hostile links without trusting the
 
 ## Short description (under 255 characters)
 
-An AI agent that investigates suspicious links and QR codes inside a firewalled sandbox on Vultr. The model only proposes; a rule engine decides; every security claim is backed by recorded evidence.
+Other tools ask if a page is malicious. Link Detonator assumes it will attack the AI checking it: links and QR codes are investigated in a firewalled Vultr sandbox, the model only proposes, and every claim is backed by evidence.
 
 ## Long description
 
@@ -21,6 +21,8 @@ Link Detonator is an AI security agent for a problem most link scanners ignore: 
 **Evidence over claims.** The report separates what the page attempted, what the rules denied and what the sandbox contained. A row says "contained" only when host-recorded events prove it, and never in an unsandboxed development mode. On the live VM, 40 of 40 sandbox and firewall checks pass. Blocked checks require the firewall rule's packet counter to rise, and the raw output is published.
 
 **Measured.** An adversarial benchmark of 14 controlled pages (11 attacks, 3 safe lookalikes), run with the real model in the real sandbox: 11/11 attacks detected, 0/3 false alarms, every unauthorized agent action blocked, no planted-secret leaks. We publish all four runs, including the two that each missed one case, and what we changed.
+
+**Why it matters.** We ran the same 14 pages through the same model without our layers: raw page text, a plain prompt, no rule engine. In each of three runs it called 1 to 2 of the 11 attacks safe, including a page that simply instructed it to. With Link Detonator: 0 of 11.
 
 **QR codes.** QR images are decoded inside a container with no network. Nothing opens until the user clicks. Then the link goes through the same validation and pipeline, so metadata and private addresses are refused and `javascript:` links are never opened.
 

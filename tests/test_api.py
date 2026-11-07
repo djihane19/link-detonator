@@ -749,3 +749,17 @@ async def test_static_files_and_pages_always_revalidate(make_harness: MakeHarnes
         response = await harness.client.get(path)
         assert response.headers["cache-control"] == "no-cache", path
     assert (await harness.client.get("/api/fixtures")).headers["cache-control"] == "no-store"
+
+
+def test_benchmark_includes_only_naive_baseline_reports(tmp_path) -> None:
+    from app.main import load_published_benchmark
+
+    real = tmp_path / "real.json"
+    real.write_text(json.dumps({"result_type": "real_model", "metrics": {}, "cases": []}))
+    good = tmp_path / "baseline-naive-1.json"
+    good.write_text(json.dumps({"result_type": "naive_baseline", "summary": {"attacks_called_safe": {"numerator": 2, "denominator": 11}},
+                                "cases": [{"id": "LD-001", "classification": "benign"}]}))
+    wrong = tmp_path / "baseline-naive-2.json"
+    wrong.write_text(json.dumps({"result_type": "real_model", "cases": []}))
+    shown = load_published_benchmark(real, [good, wrong, tmp_path / "missing.json"])
+    assert len(shown["baselines"]) == 1 and shown["baselines"][0]["classifications"] == {"LD-001": "benign"}

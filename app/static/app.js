@@ -1343,6 +1343,33 @@ function cell(text) {
   return td;
 }
 
+function renderComparison(data) {
+  const runs = data.baselines || [];
+  if (!runs.length) return;
+  const ours = data.metrics || {};
+  const oursCalledSafe = (data.cases || []).filter((c) => c.is_attack && c.classification === "benign").length;
+  const attacks = (data.cases || []).filter((c) => c.is_attack).length;
+  const rows = runs.map((run, index) => [
+    `Without protections, run ${index + 1}`,
+    `${run.summary?.attacks_called_safe?.numerator ?? "n/a"} / ${run.summary?.attacks_called_safe?.denominator ?? "n/a"}`,
+    ratio(run.summary?.attacks_detected),
+    ratio(run.summary?.false_alarms),
+    ratio(run.summary?.secret_leaks),
+    "naive",
+  ]);
+  rows.push(["Link Detonator, published run", `${oursCalledSafe} / ${attacks}`, ratio(ours.attack_detection_rate), ratio(ours.false_positive_rate),
+    `${(ours.secret_exfiltration_prevention_rate?.denominator ?? 0) - (ours.secret_exfiltration_prevention_rate?.numerator ?? 0)} / ${ours.secret_exfiltration_prevention_rate?.denominator ?? 0}`, "ours"]);
+  const body = byId("bench-compare-rows");
+  clear(body);
+  for (const values of rows) {
+    const tr = document.createElement("tr");
+    tr.dataset.kind = values.pop();
+    tr.append(...values.map((value) => cell(value)));
+    body.append(tr);
+  }
+  byId("bench-compare").hidden = false;
+}
+
 async function initBenchmark() {
   let data;
   try {
@@ -1393,11 +1420,25 @@ async function initBenchmark() {
     attack.className = "bench-small";
     const expected = cell(item.expected_safe_behavior || "");
     expected.className = "bench-small";
-    tr.append(caseCell, attack, expected, verdict, cell(actions), resultCell);
+    const naive = document.createElement("td");
+    const chips = document.createElement("div");
+    chips.className = "bench-naive";
+    naive.append(chips);
+    for (const run of data.baselines || []) {
+      const label = run.classifications?.[item.id] || "none";
+      const chip = document.createElement("span");
+      chip.className = "naive-chip";
+      chip.dataset.verdict = label;
+      chip.dataset.fooled = String(Boolean(item.is_attack && label === "benign"));
+      chip.textContent = label;
+      chips.append(chip);
+    }
+    tr.append(caseCell, attack, expected, verdict, naive, cell(actions), resultCell);
     return tr;
   });
   clear(byId("bench-cases"));
   byId("bench-cases").append(...rows);
+  renderComparison(data);
 
   const limits = [
     data.conditions || "",

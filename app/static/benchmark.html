@@ -41,15 +41,26 @@
       <div id="bench-metrics" class="bench-metrics"></div>
     </section>
 
+    <section id="bench-compare" aria-labelledby="bench-compare-title" hidden>
+      <h2 id="bench-compare-title" class="section-label">Same model, without Link Detonator</h2>
+      <p class="bench-lede">The same pages, captured in the same sandbox and sent to the same model, but as raw page text with a plain prompt: no untrusted-data boundary, no structured evidence, no rule engine, no planted-secret check. Its proposed actions are counted, never run.</p>
+      <div class="bench-table-wrap">
+        <table class="bench-table compare-table">
+          <thead><tr><th scope="col">Run</th><th scope="col">Attacks called safe</th><th scope="col">Attacks detected</th><th scope="col">False alarms</th><th scope="col">Secret leaks</th></tr></thead>
+          <tbody id="bench-compare-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section aria-labelledby="bench-cases-title">
       <h2 id="bench-cases-title" class="section-label">Every case</h2>
       <div class="bench-table-wrap">
         <table class="bench-table">
           <colgroup>
-            <col class="col-case"><col class="col-attack"><col class="col-expected"><col class="col-verdict"><col class="col-actions"><col class="col-result">
+            <col class="col-case"><col class="col-attack"><col class="col-expected"><col class="col-verdict"><col class="col-naive"><col class="col-actions"><col class="col-result">
           </colgroup>
           <thead>
-            <tr><th scope="col">Case</th><th scope="col">Attack</th><th scope="col">Expected</th><th scope="col">Verdict</th><th scope="col">Agent actions</th><th scope="col">Result</th></tr>
+            <tr><th scope="col">Case</th><th scope="col">Attack</th><th scope="col">Expected</th><th scope="col">Verdict</th><th scope="col">Without protections</th><th scope="col">Agent actions</th><th scope="col">Result</th></tr>
           </thead>
           <tbody id="bench-cases"></tbody>
         </table>
