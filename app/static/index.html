@@ -46,7 +46,17 @@
         </svg>
       </div>
       <p class="lede">An AI agent that investigates links you do not trust, inside a throwaway browser on Vultr. Hostile pages try to hijack the agent. The model only proposes; a rule engine decides, and the sandbox and firewall enforce. You get evidence of what the page tried, what was blocked and what was verified. Then the chamber is destroyed.</p>
-      <p class="hint"><a class="text-link" href="/benchmark">See the adversarial benchmark: real attacks against the agent, measured.</a></p>
+      <ol class="steps" aria-label="How it works">
+        <li><strong>Detonate</strong><span>The link opens in a throwaway browser, in a container behind a firewall. It never clicks, types or submits.</span></li>
+        <li><strong>The AI judges, the rules decide</strong><span>The model reads the evidence and proposes. A rule engine allows or denies every action. The model cannot grant itself anything.</span></li>
+        <li><strong>Evidence you can verify</strong><span>Each claim in the report is tied to recorded events. Containment is shown only when the evidence proves it.</span></li>
+      </ol>
+      <nav class="quick-nav" aria-label="Jump to">
+        <a class="text-link" href="#gauntlet-slot">Run the Gauntlet</a>
+        <a class="text-link" href="#qr-title">Scan a QR code</a>
+        <a class="text-link" href="#range-title">All test charges</a>
+        <a class="text-link" href="/benchmark">Adversarial benchmark</a>
+      </nav>
     </section>
 
     <section class="arm-grid">

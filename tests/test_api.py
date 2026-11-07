@@ -739,3 +739,13 @@ def test_benchmark_shows_only_real_model_runs(tmp_path) -> None:
     harness.write_text(json.dumps({"result_type": "harness_check_not_model_performance", "cases": []}))
     assert load_published_benchmark(harness) is None
     assert load_published_benchmark(tmp_path / "missing.json") is None
+
+
+
+@pytest.mark.asyncio
+async def test_static_files_and_pages_always_revalidate(make_harness: MakeHarness) -> None:
+    harness = await make_harness()
+    for path in ("/static/app.js", "/static/styles.css", "/", "/benchmark"):
+        response = await harness.client.get(path)
+        assert response.headers["cache-control"] == "no-cache", path
+    assert (await harness.client.get("/api/fixtures")).headers["cache-control"] == "no-store"

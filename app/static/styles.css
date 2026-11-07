@@ -1259,3 +1259,29 @@ body[data-runner="dev"] .dev-only { display: block; }
 .qr-panel, .qr-panel > * { min-width: 0; }
 .qr-panel .arm-row { flex-wrap: wrap; }
 .qr-panel input[type="file"] { min-width: 0; flex: 1 1 180px; width: 100%; }
+
+/* Verdict first: colour by class, plus a one-line tally */
+.verdict { margin-top: 18px; }
+.verdict[data-status="malicious"] { border-color: var(--failed); border-style: solid; }
+.verdict[data-status="malicious"] .verdict-title { color: var(--failed); }
+.verdict[data-status="suspicious"] { border-color: var(--observed); border-style: solid; }
+.verdict[data-status="suspicious"] .verdict-title { color: var(--observed); }
+.verdict[data-status="benign"] { border-color: var(--contained); border-style: solid; }
+.verdict[data-status="benign"] .verdict-title { color: var(--contained); }
+.verdict[data-status="inconclusive"], .verdict[data-status="unavailable"] { border-color: var(--quiet); }
+.verdict-tally { grid-column: 1 / -1; list-style: none; margin: 10px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.verdict-tally li { border: 1px solid var(--line); padding: 8px 10px; display: grid; gap: 2px; }
+.tally-number { font-family: var(--font-stencil); font-size: 1.6rem; line-height: 1; }
+.tally-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dust); }
+.verdict-tally li[data-outcome="denied_by_policy"] .tally-number, .verdict-tally li[data-outcome="blocked_by_enforcement"] .tally-number { color: var(--contained); }
+.verdict-tally li[data-outcome="attempt_detected"] .tally-number { color: var(--observed); }
+.verdict-body { grid-column: 1 / -1; }
+
+/* Home: three steps and quick links */
+.steps { list-style: none; counter-reset: step; padding: 0; margin: 18px 0 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.steps li { counter-increment: step; border: 1px solid var(--line); background: var(--soot); padding: 14px 16px; display: grid; gap: 6px; min-width: 0; }
+.steps li::before { content: "0" counter(step); font-family: var(--font-stencil); color: var(--tape); font-size: 1.4rem; line-height: 1; }
+.steps strong { font-family: var(--font-stencil); text-transform: uppercase; letter-spacing: 0.04em; font-size: 1.15rem; }
+.steps span { color: var(--dust); font-size: 0.9rem; }
+.quick-nav { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 6px 0 0; }
+.report-actions { flex-wrap: wrap; }

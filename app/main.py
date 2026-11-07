@@ -159,13 +159,17 @@ class SecurityHeadersMiddleware:
             return
 
         started = False
-        no_store = _is_private_path(scope.get("path", ""))
+        path = scope.get("path", "")
+        no_store = _is_private_path(path)
+        # Pages and static files revalidate every time (cheap with ETag), so a deploy
+        # can never leave a visitor running an old script against a new page.
+        revalidate = not no_store and (path.startswith("/static/") or path in ("/", "/benchmark"))
 
         async def send_with_headers(message: Message) -> None:
             nonlocal started
             if message["type"] == "http.response.start":
                 started = True
-                message["headers"] = _with_security_headers(message.get("headers", []), no_store)
+                message["headers"] = _with_security_headers(message.get("headers", []), no_store, revalidate)
             await send(message)
 
         try:
@@ -182,12 +186,14 @@ def _is_private_path(path: str) -> bool:
 
 
 def _with_security_headers(
-    headers: list[tuple[bytes, bytes]], no_store: bool
+    headers: list[tuple[bytes, bytes]], no_store: bool, revalidate: bool = False
 ) -> list[tuple[bytes, bytes]]:
     names = {name.lower() for name, _ in headers}
     merged = list(headers) + [item for item in SECURITY_HEADERS if item[0] not in names]
     if no_store and b"cache-control" not in names:
         merged.append((b"cache-control", b"no-store"))
+    elif revalidate and b"cache-control" not in names:
+        merged.append((b"cache-control", b"no-cache"))
     return merged
 
 

@@ -1097,6 +1097,34 @@ function jolt(wallGroup) {
 
 /* ------------------------------------------------------------------ Report: verdict */
 
+function renderTally(verdict) {
+  const tally = byId("verdict-tally");
+  if (!tally) return;
+  const records = verdict.verification?.records || [];
+  const count = (outcome) => records.filter((r) => r.outcome === outcome).length;
+  const sandboxed = verdict.verification?.environment === "docker_sandbox";
+  const items = [
+    ["Attempts detected", count("attempt_detected"), "attempt_detected"],
+    ["Denied by rules", count("denied_by_policy"), "denied_by_policy"],
+    ["Contained by sandbox", sandboxed ? count("blocked_by_enforcement") : "not tested", "blocked_by_enforcement"],
+    ["Model calls", verdict.model?.calls ?? 0, "neutral"],
+  ];
+  clear(tally);
+  for (const [label, value, outcome] of items) {
+    const li = document.createElement("li");
+    li.dataset.outcome = outcome;
+    const number = document.createElement("span");
+    number.className = "tally-number";
+    number.textContent = String(value);
+    const name = document.createElement("span");
+    name.className = "tally-label";
+    name.textContent = label;
+    li.append(number, name);
+    tally.append(li);
+  }
+  tally.hidden = false;
+}
+
 const OUTCOME_LABELS = {
   attempt_detected: "Attempt detected",
   denied_by_policy: "Denied by policy",
@@ -1131,6 +1159,8 @@ function renderVerdict(verdict) {
   const title = byId("verdict-title");
   const body = byId("verdict-body");
   clear(body);
+  const tally = byId("verdict-tally");
+  if (tally) tally.hidden = true;
   if (!verdict || verdict.status === "pending" || !verdict.status) {
     card.dataset.status = "pending";
     title.textContent = "No AI verdict for this scan";
@@ -1145,6 +1175,7 @@ function renderVerdict(verdict) {
   }
   card.dataset.status = String(verdict.classification);
   title.textContent = String(verdict.classification);
+  renderTally(verdict);
   const environment = verdict.verification?.environment;
   const parts = [scannedText(verdict.summary || "")];
   const opinion = [verdictLine("Model confidence", `${Math.round((verdict.model_confidence || 0) * 100)}% (the model's opinion, not a verified fact)`)];

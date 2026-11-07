@@ -30,6 +30,7 @@
     </a>
     <div class="report-actions">
       <button id="copy-link" class="ghost" type="button">Copy report link</button>
+      <a class="ghost" href="/benchmark">Benchmark</a>
       <a class="ghost" href="/">New scan</a>
     </div>
   </header>
@@ -51,6 +52,21 @@
     <p id="stream-note" class="stream-note" role="status" hidden></p>
     <p id="live-announcer" class="visually-hidden" aria-live="polite"></p>
 
+    <section id="verdict-card" class="verdict" data-status="pending" aria-labelledby="verdict-title">
+      <p class="eyebrow">Verdict</p>
+      <h2 id="verdict-title" class="verdict-title">No AI verdict yet</h2>
+      <ul id="verdict-tally" class="verdict-tally" hidden aria-label="Outcome counts"></ul>
+      <div id="verdict-body" class="verdict-body">No verdict has been issued, and none is implied. Everything on this page is raw evidence, not a judgement.</div>
+    </section>
+
+    <section id="qr-card" class="qr-card" hidden aria-labelledby="qr-card-title">
+      <h2 id="qr-card-title" class="section-label">Started from a QR code</h2>
+      <div class="qr-result">
+        <img id="qr-card-image" class="qr-preview" alt="The QR image this scan came from, redrawn by the sandbox">
+        <dl id="qr-card-facts" class="qr-facts"></dl>
+      </div>
+    </section>
+
     <section class="blast" aria-labelledby="blast-title">
       <header class="blast-head">
         <h1 id="blast-title" class="stencil stencil-large">Blast Radius</h1>
@@ -70,20 +86,6 @@
         </figure>
         <ol id="blast-rows" class="rows"></ol>
       </div>
-    </section>
-
-    <section id="qr-card" class="qr-card" hidden aria-labelledby="qr-card-title">
-      <h2 id="qr-card-title" class="section-label">Started from a QR code</h2>
-      <div class="qr-result">
-        <img id="qr-card-image" class="qr-preview" alt="The QR image this scan came from, redrawn by the sandbox">
-        <dl id="qr-card-facts" class="qr-facts"></dl>
-      </div>
-    </section>
-
-    <section id="verdict-card" class="verdict" data-status="pending" aria-labelledby="verdict-title">
-      <p class="eyebrow">Verdict</p>
-      <h2 id="verdict-title" class="verdict-title">No AI verdict yet</h2>
-      <div id="verdict-body" class="verdict-body">No verdict has been issued, and none is implied. Everything on this page is raw evidence, not a judgement.</div>
     </section>
 
     <div class="evidence-grid">
