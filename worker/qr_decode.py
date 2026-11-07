@@ -36,17 +36,16 @@ def on_timeout(_signum: int, _frame: object) -> None:
     fail("decoding took too long")
 
 
-def main() -> None:
-    signal.signal(signal.SIGALRM, on_timeout)
-    signal.alarm(TIME_LIMIT_S)
+class DecodeError(Exception):
+    """A refusal with one of the fixed reasons above. Raised by decode_image()."""
 
-    data = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
-    if len(data) > MAX_INPUT_BYTES:
-        fail("image too large")
-    if not data:
-        fail("empty upload")
 
-    # Imported late so the limits above apply even if a library is slow to load.
+def decode_image(data: bytes, preview: bool = True) -> dict[str, object]:
+    """Reads QR codes from image bytes. Pure: no files, no network. Raises DecodeError.
+
+    Also imported by email_extract.py, which passes preview=False.
+    """
+    # Imported late so the caller's limits apply even if a library is slow to load.
     from PIL import Image, UnidentifiedImageError
 
     Image.MAX_IMAGE_PIXELS = MAX_PIXELS
@@ -55,15 +54,15 @@ def main() -> None:
             kind = FORMATS.get(probe.format or "")
             width, height = probe.size
             if kind is None:
-                fail("not a PNG, JPEG or WebP image")
+                raise DecodeError("not a PNG, JPEG or WebP image")
             if width > MAX_SIDE or height > MAX_SIDE or width * height > MAX_PIXELS:
-                fail("image dimensions too large")
+                raise DecodeError("image dimensions too large")
             probe.verify()
         with Image.open(io.BytesIO(data)) as image:
             image.load()
             rgb = image.convert("RGB")
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError, SyntaxError):
-        fail("not a readable image")
+        raise DecodeError("not a readable image") from None
 
     import cv2
     import numpy
@@ -88,23 +87,39 @@ def main() -> None:
         except cv2.error:
             pass
 
-    # A preview drawn here, from decoded pixels, so the host never serves uploaded bytes.
-    preview = rgb.copy()
-    preview.thumbnail((PREVIEW_SIDE, PREVIEW_SIDE))
-    buffer = io.BytesIO()
-    preview.save(buffer, format="PNG")
-
     unique = list(dict.fromkeys(payloads))
-    reply(
-        ok=True,
-        format=kind,
-        width=width,
-        height=height,
-        codes_found=len(unique),
-        payloads=[text[:MAX_PAYLOAD_CHARS] for text in unique[:MAX_CODES]],
-        truncated=len(unique) > MAX_CODES,
-        preview_png_b64=base64.b64encode(buffer.getvalue()).decode("ascii"),
-    )
+    result: dict[str, object] = {
+        "format": kind,
+        "width": width,
+        "height": height,
+        "codes_found": len(unique),
+        "payloads": [text[:MAX_PAYLOAD_CHARS] for text in unique[:MAX_CODES]],
+        "truncated": len(unique) > MAX_CODES,
+    }
+    if preview:
+        # A preview drawn here, from decoded pixels, so the host never serves uploaded bytes.
+        small = rgb.copy()
+        small.thumbnail((PREVIEW_SIDE, PREVIEW_SIDE))
+        buffer = io.BytesIO()
+        small.save(buffer, format="PNG")
+        result["preview_png_b64"] = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return result
+
+
+def main() -> None:
+    signal.signal(signal.SIGALRM, on_timeout)
+    signal.alarm(TIME_LIMIT_S)
+
+    data = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
+    if len(data) > MAX_INPUT_BYTES:
+        fail("image too large")
+    if not data:
+        fail("empty upload")
+    try:
+        result = decode_image(data)
+    except DecodeError as exc:
+        fail(str(exc))
+    reply(ok=True, **result)
 
 
 if __name__ == "__main__":

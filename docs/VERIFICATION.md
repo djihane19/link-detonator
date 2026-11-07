@@ -9,20 +9,16 @@ A failed connection alone is not proof, since nothing might be listening there. 
 ## What this proves, and what it does not
 
 - **Proves**, on this VM at this time: the egress firewall blocks metadata, private, CGNAT and host addresses; the container is read-only, non-root, capability-free and limited in memory, processes and connections; secrets in the orchestrator's environment are absent from the container; a killed sandbox stops and is removed.
-- **Does not prove:** resistance to a Chromium or Linux kernel exploit. The container shares the host kernel, Chromium runs with `--no-sandbox` inside it, and gVisor is not installed. See the README's "Security model".
+- **Also proves:** the QR and email decoders run with no network under gVisor (`runsc`), which gives them their own user-space kernel ("decoder runs under gVisor").
+- **Does not prove:** resistance to a Chromium or Linux kernel exploit in the browser sandbox. That container still uses the standard runtime and shares the host kernel, and Chromium runs with `--no-sandbox` inside it. gVisor for the browser is not enabled: its DNS path did not work under gVisor's network stack, so it was left out rather than weakened. See the README's "Security model".
 - **Runs on:** the one VM below. Re-run it after any change to Docker, the kernel or the firewall.
 
-## Latest run (raw output)
+## Latest run (raw output, 2026-11-07, decoders under gVisor)
 
 ```
-date_utc: 2026-11-06T23:37:02Z
-host: Vultr vhp-4c-8gb, Amsterdam
-os: Ubuntu 24.04.5 LTS, kernel 6.8.0-147-generic
-docker: 29.1.3, runtime: runc (gVisor not installed)
-scans running: 0
-
 Image: link-detonator-worker:latest
 Runtime: default
+Decoder runtime: runsc
 Public IP: 185.92.220.83
 
 PASS  firewall rules present    firewall.sh --check
@@ -45,8 +41,8 @@ PASS  IPv6 egress blocked       ENETUNREACH
 PASS  DNS works                 example.com -> 2 address(es)
 PASS  public HTTPS allowed      example.com: HTTP/1.1 200 OK
 PASS  connection cap per destination  attempt 33 -> EHOSTUNREACH
-PASS  firewall rule hit         metadata: 10 -> 11 packets
-PASS  firewall rule hit         RFC1918 10/8: 10 -> 11 packets
+PASS  firewall rule hit         metadata: 3 -> 4 packets
+PASS  firewall rule hit         RFC1918 10/8: 3 -> 4 packets
 PASS  firewall rule hit         RFC1918 172.16/12: 2 -> 3 packets
 PASS  firewall rule hit         RFC1918 192.168/16: 2 -> 3 packets
 PASS  firewall rule hit         CGNAT: 1 -> 2 packets
@@ -62,10 +58,11 @@ PASS  non-root                  uid=1001 gid=1001
 PASS  no env secrets            secret-like variable names: none
 PASS  pid limit                 pids.max=256, refused after 254 forks
 PASS  memory limit              memory.max=1073741824, allocator killed=True after 992 MiB
-PASS  no env secrets            Config.Env holds none of 3 compared value(s)
+PASS  no env secrets            Config.Env holds none of 4 compared value(s)
 PASS  no mounts                 container has 0 mounts
 PASS  docker kill stops the sandbox  not running 100 ms after docker kill
+PASS  decoder has no network    connect -> OSError:101, uid=1001
+PASS  decoder runs under gVisor  kernel seen inside: 4.19.0-gvisor
 
-40 passed, 0 failed
-exit code: 0
+42 passed, 0 failed
 ```

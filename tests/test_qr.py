@@ -316,3 +316,17 @@ def test_decoder_container_has_no_network_mounts_or_environment() -> None:
 def test_hostile_decoder_output_is_rejected(stdout: bytes) -> None:
     with pytest.raises(qr_input.QrError):
         qr_input.parse_decoder_output(stdout)
+
+
+
+def test_decoders_use_the_decoder_runtime_and_reject_bad_names() -> None:
+    from app.email_intake import build_extractor_argv
+
+    for build in (qr_input.build_decoder_argv, build_extractor_argv):
+        assert "--runtime" not in build("ld-x", Settings())
+        argv = build("ld-x", Settings(runtime="runc", decoder_runtime="runsc"))
+        assert argv[argv.index("--runtime") + 1] == "runsc"
+        argv = build("ld-x", Settings(runtime="runsc"))
+        assert argv[argv.index("--runtime") + 1] == "runsc"
+        with pytest.raises(ValueError):
+            build("ld-x", Settings(decoder_runtime="--privileged"))

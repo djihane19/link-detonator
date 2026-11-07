@@ -35,14 +35,29 @@ After a **benign** verdict on a real link, the report offers to open it in a new
 
 **Limits:** no PDF, batch or OCR support. Decoding uses OpenCV's two QR detectors combined, and a damaged or unusual code may still not be read. A shortened link's real destination is unknown until investigated. Live links need the operator's access code, like any live scan.
 
+## Email files
+
+A suspicious email is one more way to submit links. Save it as a `.eml` file (most mail apps can download or save a message that way) and upload it in **Check a suspicious email** on the home page. Try `demo/email/1-fake-bank-alert.eml` and `demo/email/2-benign-newsletter.eml`.
+
+The file is read inside a disposable container with **no network**, read-only, non-root and limited to 256 MB, from the same image and with the same limits as the QR decoder. It arrives only on stdin. The app itself only counts bytes and checks that the first kilobyte looks like mail headers rather than a binary; it never parses the email, its HTML or its images. The reader uses Python's standard `email` package and `html.parser`, and lists:
+
+- the sender, Reply-To, Return-Path, subject, date and the SPF, DKIM and DMARC results the email's own headers claim (copied, not verified);
+- every link in the HTML (with the text shown for it) and in the plain text;
+- every attachment's name, declared type, size and SHA-256. Attachments are hashed in memory and never written, opened or offered for download;
+- QR codes in attached, inline and embedded images, read with the same decoder as QR uploads.
+
+Each link and QR payload is classified with the same rules as QR codes, and the reply is validated as hostile before use. The page lists indicators: a link whose text shows a different address than it goes to, a Reply-To on another domain, a failed sender check, `javascript:` or `data:` links, links to private addresses, executable or double-extension attachments, and QR codes. **These are facts, not a verdict.** A web link is investigated only after you click, through the normal scan pipeline, and the server checks that the link really came from that email. The report then starts with an `email_source` event that only the orchestrator can write: the subject, sender, chosen link and the file's SHA-256. The original file is kept as evidence but never served.
+
+**Limits:** files only, at most 5 MB, 200 MIME parts, 10 levels of nesting, 50 links and 30 attachments; anything past that is cut off and the page says so. There is no live mailbox or forwarding address yet, which needs a domain with its own mail setup. No AI reads the email itself yet: the agent only sees the page a link leads to. Links in HTML text that are not real links are not listed. Header checks are only what the email claims, and a sender can forge them.
+
 ## Verification status
 
 | Part | Status |
 |---|---|
-| Sandbox and firewall | **Verified on the live VM:** `deploy/verify_sandbox.sh` passes 40 of 40 real checks (latest run 2026-11-06 23:37 UTC). Raw output and what it does and does not prove: [docs/VERIFICATION.md](docs/VERIFICATION.md) |
+| Sandbox and firewall | **Verified on the live VM:** `deploy/verify_sandbox.sh` passes 42 of 42 real checks, including the QR and email decoders running under gVisor with no network (latest run 2026-11-07). Raw output and what it does and does not prove: [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Deploy scripts | Run for real: `provision.sh` built this VM, and it refuses to start the app unless verification passes |
 | AI agent | Running on the VM with Vultr Serverless Inference. Real benchmark results: [reports/README.md](reports/README.md) |
-| Not verified | Resistance to Chromium or kernel exploits, and the gVisor path. See "Security model" below |
+| Not verified | Resistance to Chromium or kernel exploits in the browser sandbox, which does not use gVisor yet. See "Security model" below |
 
 ## Architecture
 
@@ -91,7 +106,7 @@ More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The engineering 
 
 - **It is not malware-proof.** A container shares the VM's kernel, so a kernel or Docker escape would defeat it. A browser exploit is contained only as far as these layers hold.
 - **Chromium runs with `--no-sandbox`** inside the container. Its own sandbox needs privileges the container deliberately lacks, so the container is the boundary and there is no second layer within it.
-- **gVisor is optional and not installed.** It would reduce kernel exposure. Install it yourself and set `LD_RUNTIME=runsc`; this path is untested, and some checks in `verify_sandbox.sh` may need adjusting.
+- **gVisor runs the file decoders, not yet the browser.** QR images and email files are parsed under gVisor (`LD_DECODER_RUNTIME=runsc`), so a parser exploit meets gVisor's user-space kernel, not the host's. The browser sandbox still uses the standard runtime: under gVisor its DNS lookups failed (gVisor's own network stack bypasses Docker's DNS redirect), and `--reproduce-nat` and `--reproduce-nftables` did not fix it in the time available. `provision.sh` installs gVisor from Google's signed repository.
 - **The docker group is root-equivalent.** The `detonator` user needs it to start containers, so compromising the app means root on the VM. **This VM must hold nothing else**: no other services, data or credentials you would mind losing. Rebuild it rather than cleaning it.
 - **The sandbox can reach the public web.** Pages run for real, so a target learns the VM's IP and can receive anything the page sends. Detonating a link can tip off whoever sent it.
 - **DNS can leak data.** Lookups for attacker-chosen names reach the attacker's name server through the resolver.

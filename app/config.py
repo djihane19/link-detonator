@@ -38,6 +38,9 @@ class Settings:
     docker_bin: str = "docker"
     image: str = "link-detonator-worker:latest"
     runtime: str | None = None
+    # The QR and email decoders parse attacker-supplied files with no network, so they can
+    # run under gVisor even where the browser sandbox does not. Falls back to `runtime`.
+    decoder_runtime: str | None = None
     deadline_s: float = 60.0
     docker_command_timeout_s: float = 15.0
     secret_env_names: tuple[str, ...] = ("VULTR_API_KEY", LIVE_ACCESS_CODE_ENV)
@@ -110,6 +113,7 @@ class Settings:
             docker_bin=_text(source, "LD_DOCKER_BIN", defaults.docker_bin),
             image=_text(source, "LD_IMAGE", defaults.image),
             runtime=_text(source, "LD_RUNTIME", "") or None,
+            decoder_runtime=_text(source, "LD_DECODER_RUNTIME", "") or None,
             deadline_s=_positive_float(source, "LD_DEADLINE_S", defaults.deadline_s),
             docker_command_timeout_s=_positive_float(
                 source, "LD_DOCKER_COMMAND_TIMEOUT_S", defaults.docker_command_timeout_s

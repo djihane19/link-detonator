@@ -29,7 +29,7 @@ from urllib.parse import urlsplit
 
 from app.config import PROJECT_ROOT, Settings
 from app.models import FIXTURE_NAMES
-from app.sandbox import SANDBOX_LABEL, _DockerClient, owner_label
+from app.sandbox import SANDBOX_LABEL, _DockerClient, decoder_runtime_args, owner_label
 from app.urlpolicy import UrlPolicyError, check_url_syntax
 
 logger = logging.getLogger(__name__)
@@ -196,8 +196,7 @@ def build_decoder_argv(name: str, settings: Settings) -> list[str]:
         "--log-driver", "none",
         "--user", "pwuser",
     ]
-    if settings.runtime:
-        argv += ["--runtime", settings.runtime]
+    argv += decoder_runtime_args(settings)
     return [*argv, settings.image, "python", DECODER_SCRIPT]
 
 

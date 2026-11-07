@@ -6,7 +6,7 @@ FROM mcr.microsoft.com/playwright/python:v1.64.1-noble
 
 ENV PYTHONDONTWRITEBYTECODE=1
 
-COPY requirements.txt worker.py qr_decode.py /worker/
+COPY requirements.txt worker.py qr_decode.py email_extract.py /worker/
 COPY fixtures/ /worker/fixtures/
 
 RUN python -m pip install --no-cache-dir -r /worker/requirements.txt \

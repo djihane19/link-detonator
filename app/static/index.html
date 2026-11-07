@@ -54,6 +54,7 @@
       <nav class="quick-nav" aria-label="Jump to">
         <a class="text-link" href="#gauntlet-slot">Run the Gauntlet</a>
         <a class="text-link" href="#qr-title">Scan a QR code</a>
+        <a class="text-link" href="#email-title">Check an email</a>
         <a class="text-link" href="#range-title">All test charges</a>
         <a class="text-link" href="/benchmark">Adversarial benchmark</a>
       </nav>
@@ -103,6 +104,36 @@
           <p id="qr-summary" class="hint"></p>
           <ul id="qr-payloads" class="qr-payloads"></ul>
         </div>
+      </div>
+    </section>
+
+    <section class="qr-panel email-panel" aria-labelledby="email-title">
+      <p class="eyebrow">Or check an email</p>
+      <h2 id="email-title" class="stencil">Check a suspicious email</h2>
+      <p class="hint">Save the email as a .eml file (in most mail apps: More, then Download or Save as) and drop it here. It is read inside a throwaway container with no network. Links and QR codes are listed, nothing is opened, and attachments are never opened or offered for download.</p>
+      <div id="email-drop" class="email-drop" tabindex="0" role="button" aria-describedby="email-error">
+        <span class="email-drop-title">Drop a .eml file here</span>
+        <span class="hint">or choose one below. At most 5 MB.</span>
+      </div>
+      <div class="arm-row">
+        <input id="email-file" type="file" accept=".eml,message/rfc822" aria-describedby="email-error">
+        <button id="email-check" class="detonate" type="button">Check email</button>
+      </div>
+      <p id="email-error" class="form-error" role="alert" hidden></p>
+      <div id="email-result" class="email-result" hidden>
+        <p id="email-summary" class="hint"></p>
+        <dl id="email-facts" class="qr-facts"></dl>
+        <ul id="email-auth" class="email-auth" aria-label="Sender checks the email's headers claim"></ul>
+        <p class="hint email-auth-note">These checks are copied from the email's own headers. They are not verified here.</p>
+        <h3 class="section-label">What stands out</h3>
+        <ul id="email-indicators" class="email-indicators"></ul>
+        <p class="hint">These are facts about the email, not a verdict. A safe email can show some of them, and a harmful one can show none.</p>
+        <h3 class="section-label">Links</h3>
+        <ul id="email-links" class="qr-payloads"></ul>
+        <h3 class="section-label">QR codes</h3>
+        <ul id="email-qr" class="qr-payloads"></ul>
+        <h3 class="section-label">Attachments</h3>
+        <ul id="email-attachments" class="email-attachments"></ul>
       </div>
     </section>
 

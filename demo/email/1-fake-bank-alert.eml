@@ -1,0 +1,77 @@
+Return-Path: <bounce@mailer.larkspur-alerts.invalid>
+Received: from mailer.larkspur-alerts.invalid (unknown [192.0.2.44]) by
+ mx.example.com; Sat, 07 Nov 2026 08:12:03 +0000
+Authentication-Results: mx.example.com; spf=fail
+ smtp.mailfrom=larkspur-alerts.invalid; dkim=none; dmarc=fail
+ header.from=larkspur-bank.invalid
+From: Larkspur Bank Security <security@larkspur-bank.invalid>
+Reply-To: Account Review <review-desk@larkspur-support.invalid>
+To: Customer <customer@example.com>
+Subject: Action required: unusual sign-in on your Larkspur Bank account
+Date: Sat, 07 Nov 2026 08:12:00 +0000
+Message-ID: <demo-1.larkspur@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============3477989685864703467=="
+
+--===============3477989685864703467==
+Content-Type: multipart/alternative;
+ boundary="===============7448104966265115827=="
+
+--===============7448104966265115827==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Dear customer,
+
+We noticed an unusual sign-in. Confirm your details within 24 hours using the=
+ link in this email, or your account will be locked.
+
+Larkspur Bank Security
+
+(This is a fictional demo email for Link Detonator.)
+
+--===============7448104966265115827==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body>
+<p>Dear customer,</p>
+<p>We noticed an unusual sign-in to your account. Confirm your details within=
+ 24 hours or your account will be locked.</p>
+<p><a href=3D"http://fixtures.invalid/lab-credential-harvest">https://secure.=
+larkspur-bank.invalid/login</a></p>
+<p>On your phone? Scan the attached code.</p>
+<p>Larkspur Bank Security</p>
+<p style=3D"font-size:11px">This is a fictional demo email for Link Detonator=
+.</p>
+</body></html>
+
+--===============7448104966265115827==--
+
+--===============3477989685864703467==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="secure-login-qr.png"
+MIME-Version: 1.0
+
+iVBORw0KGgoAAAANSUhEUgAAAPYAAAD2AQAAAADNaUdlAAABkElEQVR42u1ZwY3DMAwTzgN4JK+u
+kTyAAVUi5eJe/R7YixEUSfShY4kiVYuP69gTf+JfHrdaq25mvrARHrtejYz/2Of11/HCnzhjrwK8
+81r5m498r4EfsG36mbkRfv/cztLCn+DP9NxF1BFI4sejR6fT0sr/LoHwftTJf/IPKvd9KfFPLxzB
+qY0U8uZXBfzJ+af434k/CwEpZCFUvwkVzYtdoA9C5fsXZxrJc1TlegWm6+R/QR277yEkvDYlk//N
+9mxelTw8Cx38AzkD8ncwv9L3J/MU+Cpb68qdMvxpyBaSD1UE9Y9Q/jPtaQFqOyaG/xRzdhegnBCq
+XxoungIsQEug0NGfvNjI4nJRSOnnsa/zJfPo6Ifutpu0WS2AuaSkn2Fefo8gjo7+P3TukEBdv1cU
+qeQ/BCeI1Gje20gK+a8mTJwFtJyOfuD8bbd4ONAPcvxpHF7tdi4wMlLzHyjPUv7XRcrND3EEV7mZ
+HP428mwBR0d/Xv2wOLkNTqHV5m9kUViY1g+hNX97/t954v8u/gITPClOen1o7gAAAABJRU5ErkJg
+gg==
+
+--===============3477989685864703467==
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="invoice.pdf.exe"
+MIME-Version: 1.0
+
+VGhpcyBpcyBhIGhhcm1sZXNzIGRlbW8gZmlsZS4gSXQgaXMgcGxhaW4gdGV4dCB3aXRoIGEgbWlz
+bGVhZGluZyBuYW1lLgo=
+
+--===============3477989685864703467==--

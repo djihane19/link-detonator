@@ -18,7 +18,7 @@ Link Detonator is an AI security agent for a problem most link scanners ignore: 
 
 **The model cannot grant itself anything.** No security control depends on the model behaving. Network, filesystem, resource limits and secret isolation are enforced by the runtime and firewall. Three checks run without trusting the model: a secret planted in its instructions, a comparison of its verdict with and without the page's hidden text, and hidden-text attack patterns. They can raise a verdict but never lower it.
 
-**Evidence over claims.** The report separates what the page attempted, what the rules denied and what the sandbox contained. A row says "contained" only when host-recorded events prove it, and never in an unsandboxed development mode. On the live VM, 40 of 40 sandbox and firewall checks pass. Blocked checks require the firewall rule's packet counter to rise, and the raw output is published.
+**Evidence over claims.** The report separates what the page attempted, what the rules denied and what the sandbox contained. A row says "contained" only when host-recorded events prove it, and never in an unsandboxed development mode. On the live VM, 42 of 42 sandbox and firewall checks pass, including the file decoders running under gVisor. Blocked checks require the firewall rule's packet counter to rise, and the raw output is published.
 
 **Measured.** An adversarial benchmark of 14 controlled pages (11 attacks, 3 safe lookalikes), run with the real model in the real sandbox: 11/11 attacks detected, 0/3 false alarms, every unauthorized agent action blocked, no planted-secret leaks. We publish all four runs, including the two that each missed one case, and what we changed.
 
@@ -26,13 +26,15 @@ Link Detonator is an AI security agent for a problem most link scanners ignore: 
 
 **QR codes.** QR images are decoded inside a container with no network. Nothing opens until the user clicks. Then the link goes through the same validation and pipeline, so metadata and private addresses are refused and `javascript:` links are never opened.
 
-**Honest limits.** The container shares the host kernel, Chromium runs without its own sandbox inside the container, and 14 cases are a small suite. These are documented in the repository with the threat model.
+**Email files.** Upload a suspicious email saved as .eml: it is parsed inside a gVisor sandbox with no network, and every link, QR code and attachment is listed with factual warning signs (mismatched link text, failed SPF/DKIM/DMARC, executable attachments). Any link can then be investigated through the same pipeline.
+
+**Honest limits.** The browser container shares the host kernel (the file decoders run under gVisor; the browser does not yet), Chromium runs without its own sandbox inside the container, and 14 cases are a small suite. These are documented in the repository with the threat model.
 
 **For:** IT and security teams triaging reported links and QR codes, and managed security providers.
 
 ## Technologies and tags
 
-Vultr, Vultr Serverless Inference, Vultr Cloud Compute, Docker, Playwright, Chromium, FastAPI, Python, iptables, OpenCV, AI agents, AI security, prompt injection, sandboxing, phishing, QR codes
+Vultr, Vultr Serverless Inference, Vultr Cloud Compute, Docker, gVisor, Playwright, Chromium, FastAPI, Python, iptables, OpenCV, AI agents, AI security, prompt injection, sandboxing, phishing, QR codes
 
 ## Links
 

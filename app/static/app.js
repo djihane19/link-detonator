@@ -225,7 +225,7 @@ function setLaunching(isLaunching) {
 }
 
 async function startScan(payload, errorBox) {
-  for (const box of [byId("arm-error"), byId("rack-error"), byId("qr-error")]) if (box) box.hidden = true;
+  for (const box of [byId("arm-error"), byId("rack-error"), byId("qr-error"), byId("email-error")]) if (box) box.hidden = true;
   setLaunching(true);
   try {
     const response = await fetch("/api/scans", {
@@ -494,6 +494,7 @@ function routeEvent(event, live) {
   if (event.type === "text_layers") addTextLayers(event);
   if (event.type === "verdict") renderVerdict(data);
   if (event.type === "qr_source" && event.source === "host") renderQrSource(data);
+  if (event.type === "email_source" && event.source === "host") renderEmailSource(data);
   if (event.type === "sandbox_created" && event.source === "host") {
     report.sandboxSeen = true;
     applyRunner(null);
@@ -545,6 +546,7 @@ const EVENT_TEXT = {
   scan_finished: (d) => ({ title: `Scan finished: ${d.status || "unknown"}`, lines: [] }),
   verdict: (d) => ({ title: `Verdict: ${d.status || "unknown"}`, lines: [] }),
   qr_source: (d) => ({ title: "Target decoded from a QR image", lines: [String(d.payload_display || "")] }),
+  email_source: (d) => ({ title: d.found_in === "qr" ? "Target from a QR code in an email" : "Target from a link in an email", lines: [String(d.link_display || "")] }),
 };
 
 function describeEvent(event) {
@@ -1381,6 +1383,222 @@ function renderQrSource(data) {
   card.hidden = false;
 }
 
+/* ------------------------------------------------------------------ Email input */
+
+/* Everything in an email upload is attacker-controlled except the labels below. It is
+   shown with textContent (via scannedText) and never as a link or a download. */
+const EMAIL_MAX_BYTES = 5 * 1024 * 1024;
+const AUTH_LABELS = { spf: "SPF", dkim: "DKIM", dmarc: "DMARC" };
+const AUTH_TONE = { pass: "good", fail: "bad", softfail: "bad", permerror: "warn", temperror: "warn", neutral: "warn", none: "warn", unknown: "warn" };
+
+function initEmail() {
+  const button = byId("email-check");
+  if (!button) return;
+  const input = byId("email-file");
+  button.addEventListener("click", () => checkEmail(input.files[0]));
+  const drop = byId("email-drop");
+  drop.addEventListener("click", () => input.click());
+  drop.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      input.click();
+    }
+  });
+  drop.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    drop.classList.add("is-over");
+  });
+  drop.addEventListener("dragleave", () => drop.classList.remove("is-over"));
+  drop.addEventListener("drop", (event) => {
+    event.preventDefault();
+    drop.classList.remove("is-over");
+    const file = event.dataTransfer && event.dataTransfer.files[0];
+    if (file) checkEmail(file);
+  });
+}
+
+async function checkEmail(file) {
+  const errorBox = byId("email-error");
+  errorBox.hidden = true;
+  byId("email-result").hidden = true;
+  if (!file) {
+    showError(errorBox, "Choose a .eml file first.");
+    return;
+  }
+  if (file.size > EMAIL_MAX_BYTES) {
+    showError(errorBox, "The email is larger than 5 MB.");
+    return;
+  }
+  const button = byId("email-check");
+  button.disabled = true;
+  button.textContent = "Checking";
+  try {
+    const type = file.type === "message/rfc822" ? "message/rfc822" : "application/octet-stream";
+    const response = await fetch("/api/email", { method: "POST", headers: { "Content-Type": type }, body: file });
+    if (!response.ok) {
+      showError(errorBox, await refusalMessage(response));
+      return;
+    }
+    renderEmailResult(await response.json());
+    byId("email-result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch {
+    showError(errorBox, "Could not reach the server. Check your connection and try again.");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Check email";
+  }
+}
+
+function factRows(list, rows) {
+  clear(list);
+  for (const [label, value] of rows) {
+    if (value === null || value === undefined || value === "") continue;
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const detail = document.createElement("dd");
+    detail.append(scannedText(String(value)));
+    list.append(term, detail);
+  }
+}
+
+function textElement(tag, className, value) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  node.append(scannedText(value));
+  return node;
+}
+
+function formatBytes(size) {
+  const n = Number(size) || 0;
+  if (n < 1024) return `${n} bytes`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function emailItem(emailId, item, isLink) {
+  const li = document.createElement("li");
+  li.className = "qr-payload email-link";
+  li.dataset.kind = item.kind;
+  if (isLink && item.text_mismatch) li.dataset.mismatch = "yes";
+  li.append(textElement("strong", "", QR_KIND_LABELS[item.kind] || item.kind));
+  if (isLink && item.anchor_text && item.anchor_text !== item.display) {
+    li.append(textElement("span", "email-label", "Text shown in the email"));
+    li.append(textElement("code", "email-anchor", item.anchor_text));
+    li.append(textElement("span", "email-label", item.text_mismatch ? "Really goes to (a different address)" : "Really goes to"));
+  }
+  li.append(textElement("code", "", item.display));
+  const notes = [];
+  if (isLink && item.hidden) notes.push("This link is hidden from the reader in the email.");
+  if (!isLink && item.part) notes.push(`Found in: ${item.part}.`);
+  notes.push(item.note || "");
+  li.append(textElement("p", "hint", notes.filter(Boolean).join(" ")));
+  if (item.investigable && item.target) {
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "detonate";
+    go.textContent = "Investigate this link";
+    go.addEventListener("click", () => investigateEmail(emailId, item.target));
+    li.append(go);
+  }
+  return li;
+}
+
+function emptyItem(text) {
+  const li = document.createElement("li");
+  li.className = "hint";
+  li.textContent = text;
+  return li;
+}
+
+function renderEmailResult(result) {
+  const headers = result.headers || {};
+  const sandbox = result.extractor === "sandbox" ? "Read in a network-disabled sandbox." : "DEV: read without a sandbox.";
+  const links = result.links || [];
+  const codes = result.qr_payloads || [];
+  const files = result.attachments || [];
+  byId("email-summary").textContent = `${sandbox} Found ${plural(links.length, "link")}, ${plural(codes.length, "QR code")} and ${plural(files.length, "attachment")}.${result.truncated ? " Only part of this email was examined: it hit a size or count limit." : ""} Nothing has been opened.`;
+  const to = (headers.to || []).join(", ") + (headers.to_count > (headers.to || []).length ? ` and ${headers.to_count - headers.to.length} more` : "");
+  factRows(byId("email-facts"), [
+    ["From", headers.from],
+    ["Reply-To", headers.reply_to],
+    ["Return-Path", headers.return_path],
+    ["To", to],
+    ["Subject", headers.subject],
+    ["Date", headers.date],
+    ["Relays", headers.received_count ? String(headers.received_count) : ""],
+    ["File SHA-256", result.sha256],
+  ]);
+
+  const auth = byId("email-auth");
+  clear(auth);
+  for (const key of ["spf", "dkim", "dmarc"]) {
+    const value = (result.auth || {})[key] || "unknown";
+    const chip = document.createElement("li");
+    chip.className = "email-chip";
+    chip.dataset.tone = AUTH_TONE[value] || "warn";
+    chip.textContent = `${AUTH_LABELS[key]}: ${value}`;
+    auth.append(chip);
+  }
+
+  const warnings = byId("email-indicators");
+  clear(warnings);
+  for (const indicator of result.indicators || []) {
+    const li = document.createElement("li");
+    li.dataset.indicator = indicator.id;
+    li.textContent = indicator.count > 1 ? `${indicator.text} (${indicator.count})` : indicator.text;
+    warnings.append(li);
+  }
+  if (!warnings.children.length) warnings.append(emptyItem("None of the checks found anything. That does not make the email safe."));
+
+  const linkList = byId("email-links");
+  clear(linkList);
+  for (const link of links) linkList.append(emailItem(result.id, link, true));
+  if (!links.length) linkList.append(emptyItem("No links found."));
+
+  const qrList = byId("email-qr");
+  clear(qrList);
+  for (const code of codes) qrList.append(emailItem(result.id, code, false));
+  if (!codes.length) qrList.append(emptyItem("No QR codes found."));
+
+  const fileList = byId("email-attachments");
+  clear(fileList);
+  for (const file of files) {
+    const li = document.createElement("li");
+    li.className = "email-attachment";
+    if (file.risky) li.dataset.risky = "yes";
+    li.append(textElement("strong", "", file.filename || "(no file name)"));
+    li.append(textElement("span", "hint", `${file.content_type}, ${formatBytes(file.size)}${file.inline ? ", inline" : ""}${file.risky ? ". A file type that can run code." : ""}`));
+    li.append(textElement("code", "email-hash", `SHA-256 ${file.sha256}`));
+    fileList.append(li);
+  }
+  if (!files.length) fileList.append(emptyItem("No attachments."));
+  else fileList.append(emptyItem("Attachments are never opened, run or offered for download."));
+
+  byId("email-result").hidden = false;
+}
+
+function investigateEmail(emailId, target) {
+  const payload = target.kind === "fixture" ? { fixture: target.value, email_id: emailId } : { url: target.value, email_id: emailId };
+  const code = byId("access-code")?.value.trim();
+  if (code && target.kind === "url") payload.access_code = code;
+  startScan(payload, byId("email-error"));
+}
+
+function renderEmailSource(data) {
+  const card = byId("email-card");
+  if (!card) return;
+  factRows(byId("email-card-facts"), [
+    ["Subject", data.subject],
+    ["From", data.from],
+    [data.found_in === "qr" ? "QR code" : "Link", data.link_display],
+    ["Link text", data.anchor_text && data.anchor_text !== data.link_display ? data.anchor_text : ""],
+    ["Found in", data.found_in === "qr" ? data.qr_part || "a QR code" : ""],
+    ["Email SHA-256", data.sha256],
+    ["Reader", data.extractor === "sandbox" ? "Network-disabled sandbox" : "DEV: no sandbox"],
+  ]);
+  card.hidden = false;
+}
+
 /* ------------------------------------------------------------------ Benchmark */
 
 const METRIC_LABELS = [
@@ -1529,7 +1747,7 @@ async function initBenchmark() {
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
-  if (page === "home") { initHome(); initQr(); }
+  if (page === "home") { initHome(); initQr(); initEmail(); }
   if (page === "report") initReport();
   if (page === "benchmark") initBenchmark();
 });

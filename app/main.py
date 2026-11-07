@@ -21,6 +21,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import PROJECT_ROOT, Settings
 from app.agent.engine import build_engine
+from app import email_intake
 from app import qr as qr_input
 from app.models import FIXTURE_NAMES, ScanAccepted, ScanRequest, ScanTarget
 from app.ratelimit import DAY_S, RateDecision, SlidingWindowLimiter, client_key
@@ -54,6 +55,9 @@ SECURITY_HEADERS: tuple[tuple[bytes, bytes], ...] = (
 MAX_BODY_BYTES = 16 * 1024
 QR_UPLOADS_PER_MINUTE = 6
 QR_UPLOADS_PER_HOUR = 60
+EMAIL_UPLOADS_PER_MINUTE = 6
+EMAIL_UPLOADS_PER_HOUR = 60
+EMAIL_CONTENT_TYPES = email_intake.CONTENT_TYPES
 # Refused URLs do not use up scan quota, so a typo is not punished. They still cost a
 # DNS lookup, so attempts have their own, wider limit.
 ATTEMPT_LIMIT_FACTOR = 6
@@ -218,6 +222,7 @@ def create_app(
     resolver: Resolver | None = None,
     verdict_engine: VerdictEngine | None = None,
     qr_decoder: qr_input.QrDecoder | None = None,
+    email_extractor: email_intake.EmailExtractor | None = None,
 ) -> FastAPI:
     active_settings = settings or Settings.from_env()
     active_runner = runner or build_runner(active_settings)
@@ -246,7 +251,11 @@ def create_app(
     app.state.settings = active_settings
 
     dev_runner = not active_runner.isolated
-    _register_api(app, manager, active_settings, resolver, dev_runner, qr_decoder or qr_input.build_decoder(active_settings))
+    _register_api(
+        app, manager, active_settings, resolver, dev_runner,
+        qr_decoder or qr_input.build_decoder(active_settings),
+        email_extractor or email_intake.build_extractor(active_settings),
+    )
     _register_pages(app, manager, dev_runner)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app
@@ -422,9 +431,12 @@ def _register_api(
     resolver: Resolver | None,
     dev_runner: bool,
     qr_decoder: qr_input.QrDecoder,
+    email_extractor: email_intake.EmailExtractor,
 ) -> None:
     qr_store = qr_input.QrStore(settings)
     qr_limiter = SlidingWindowLimiter(QR_UPLOADS_PER_MINUTE, QR_UPLOADS_PER_HOUR)
+    email_store = email_intake.EmailStore(settings)
+    email_limiter = SlidingWindowLimiter(EMAIL_UPLOADS_PER_MINUTE, EMAIL_UPLOADS_PER_HOUR)
     scan_limiter = SlidingWindowLimiter(settings.rate_per_minute, settings.rate_per_hour)
     attempt_limiter = SlidingWindowLimiter(
         settings.rate_per_minute * ATTEMPT_LIMIT_FACTOR,
@@ -495,6 +507,8 @@ def _register_api(
         parsed = await _parse_scan_request(request)
         if isinstance(parsed, str):
             return _refusal(400, parsed)
+        if parsed.qr_id is not None and parsed.email_id is not None:
+            return _refusal(400, "A scan can come from a QR image or an email, not both.")
 
         # Before any lookup: without a code, a live URL costs this server nothing.
         expected_code = settings.live_access_code()
@@ -522,6 +536,10 @@ def _register_api(
             origin = _qr_origin(qr_store.load(parsed.qr_id), target)
             if origin is None:
                 return _refusal(400, "That target was not decoded from this QR image.")
+        if parsed.email_id is not None:
+            origin = email_intake.email_origin(email_store.load(parsed.email_id), target.kind, target.value)
+            if origin is None:
+                return _refusal(400, "That target was not found in this email.")
 
         # Checked before the limiters, so a full queue does not use up the client's quota.
         if not manager.queue_has_room(use_reserve=trusted):
@@ -653,6 +671,40 @@ def _register_api(
         if image is None:
             return _refusal(404, "No such preview.")
         return Response(image, media_type="image/png", headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600"})
+
+    @app.post("/api/email")
+    async def upload_email(request: Request) -> Response:
+        """Reads a saved email in a sandbox and returns what it holds. Starts no scan."""
+        if dev_runner and not _arrived_on_loopback(request):
+            return _refusal(403, "The dev runner is not sandboxed, so it only serves loopback.")
+        client = client_of(request)
+        decision = email_limiter.check(client)
+        if not decision.allowed:
+            return _rate_limited(decision)
+        media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+        if media_type not in EMAIL_CONTENT_TYPES:
+            return _refusal(415, "Upload an email saved as a .eml file.")
+        body = await _read_capped(request, email_intake.MAX_UPLOAD_BYTES)
+        if body is None:
+            return _refusal(413, "The email is larger than 5 MB.")
+        if not email_intake.looks_like_email(body):
+            return _refusal(400, "That file does not look like an email (.eml).")
+        try:
+            extracted = await email_extractor.extract(body)
+        except email_intake.EmailError as exc:
+            return _refusal(400, str(exc))
+        meta = await asyncio.to_thread(email_store.save, body, extracted, email_extractor.sandboxed)
+        return JSONResponse(email_intake.public_view(meta))
+
+    @app.get("/api/email/{email_id}")
+    async def get_email(email_id: str, request: Request) -> Response:
+        refused = read_refusal(request)
+        if refused is not None:
+            return refused
+        meta = email_store.load(email_id)
+        if meta is None:
+            return _refusal(404, "No such email upload.")
+        return JSONResponse(email_intake.public_view(meta))
 
     @app.get("/api/benchmark")
     async def published_benchmark() -> dict[str, Any]:

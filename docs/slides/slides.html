@@ -127,7 +127,7 @@
     <div class="trust"><b>Orchestrator</b>FastAPI on a Vultr VM. Assigns every event. <span class="tag yellow">trusted</span></div>
     <div><b>AI agent</b>glm-5.3-flash on Vultr Serverless Inference. <span class="tag amber">proposes only</span></div>
     <div class="trust"><b>Rule engine</b>One action allowed: open an observed link in a new sandbox. <span class="tag yellow">decides</span></div>
-    <div class="hostile"><b>Sandbox</b>Chromium in Docker behind an iptables egress firewall. <span class="tag red">hostile</span></div>
+    <div class="hostile"><b>Sandbox</b>Chromium in Docker behind an egress firewall. File decoders under gVisor. <span class="tag red">hostile</span></div>
   </div>
   <div class="cols">
     <ul>
@@ -143,7 +143,7 @@
 
 <section class="slide">
   <p class="eyebrow">Proof of containment · live VM</p>
-  <h2>40 of 40 sandbox checks pass</h2>
+  <h2>42 of 42 sandbox checks pass</h2>
   <div class="cols">
     <ul>
       <li>Real containers with the app's exact flags, real network attempts. Nothing mocked.</li>
@@ -153,6 +153,7 @@
     <ul>
       <li>Read-only rootfs, no capabilities, non-root, no mounts, no secrets in the container, including the AI key.</li>
       <li>Memory limit kills at 1 GB, pid limit at 256, a killed sandbox is gone within about 250 ms.</li>
+      <li>QR and email decoders: <strong>gVisor</strong>, no network.</li>
       <li class="muted">Raw output: docs/VERIFICATION.md</li>
     </ul>
   </div>
@@ -220,8 +221,8 @@
     </ul>
     <ul>
       <li>Pricing: per seat for teams, or per scan through an API.</li>
-      <li>Next: forward-an-email intake, gVisor for a second isolation layer, a larger public benchmark.</li>
-      <li class="muted">Honest limits: shared host kernel, Chromium runs without its own sandbox inside the container, a 14-case suite.</li>
+      <li>Email files already work: links, QR codes and attachments checked in a gVisor sandbox. Next: a live forwarding mailbox, gVisor for the browser, a larger benchmark.</li>
+      <li class="muted">Honest limits: the browser sandbox shares the host kernel, Chromium runs without its own sandbox inside it, a 14-case suite.</li>
     </ul>
   </div>
   <span class="brand">Link Detonator</span><span class="num">11</span>

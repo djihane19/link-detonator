@@ -62,12 +62,29 @@ create_user_and_dirs() {
 
 # Docker's embedded resolver dials its upstream from inside the container's network
 # namespace, so these are the addresses firewall.sh has to allow.
+# gVisor (runsc) gives the file decoders their own user-space kernel. Installed from
+# Google's signed apt repository; skipped with LD_INSTALL_GVISOR=0.
+install_gvisor() {
+  [[ "${LD_INSTALL_GVISOR:-1}" == "1" ]] || return 0
+  if ! command -v runsc >/dev/null 2>&1; then
+    log "installing gVisor (runsc)"
+    curl -fsSL https://gvisor.dev/archive.key | gpg --dearmor --yes -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+    printf 'deb [arch=%s signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main\n' \
+      "$(dpkg --print-architecture)" >/etc/apt/sources.list.d/gvisor.list
+    apt-get -o DPkg::Lock::Timeout=300 update -q
+    apt-get -o DPkg::Lock::Timeout=300 install -y -q runsc
+  fi
+}
+
 configure_docker() {
-  local servers="" resolver desired
+  local servers="" resolver desired runtimes=""
   for resolver in $LD_SANDBOX_DNS; do
     servers="$servers${servers:+, }\"$resolver\""
   done
-  desired=$(printf '{\n  "dns": [%s]\n}' "$servers")
+  if command -v runsc >/dev/null 2>&1; then
+    runtimes=$(printf ',\n  "runtimes": {\n    "runsc": {\n      "path": "%s"\n    }\n  }' "$(command -v runsc)")
+  fi
+  desired=$(printf '{\n  "dns": [%s]%s\n}' "$servers" "$runtimes")
 
   mkdir -p "$(dirname "$DOCKER_CONFIG_FILE")"
   if [[ ! -f "$DOCKER_CONFIG_FILE" || "$(cat "$DOCKER_CONFIG_FILE")" != "$desired" ]]; then
@@ -155,6 +172,7 @@ configure_caddy() {
 main() {
   preflight
   install_packages
+  install_gvisor
   create_user_and_dirs
   configure_docker
   install_app_venv

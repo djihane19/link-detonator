@@ -61,3 +61,23 @@ Newest last. Decisions and evidence, for review by another engineer.
 ## 2026-11-07: QR uploads blocked by the proxy
 
 A tablet's camera upload was refused with a generic message. Caddy's `request_body` limit was 64 KB for every route, set before QR uploads existed, so photos never reached the app. The app tests call the app directly and could not see it. Fix: 6 MB on `/api/qr` only, with the app still enforcing exactly 5 MB, and 64 KB elsewhere. Checked through the public address with a 1 MB phone-style photo (decoded), and a 100 KB JSON body to `/api/scans` (still refused). A 413 now shows "image too large" instead of "request was refused".
+
+## 2026-11-07: email intake
+
+**Decision: the same boundary as QR codes.** An email is hostile input with three parsers in it (MIME, HTML, images), so none of them runs in the app. `worker/email_extract.py` runs in the worker image with `--network none`, read-only, 256 MB and 64 pids, reads the `.eml` on stdin and prints one JSON line. The app checks size and that the first 1 KB looks like headers, then validates every field of the reply (types, lengths, counts, exact key sets) and rejects it whole on any mismatch.
+
+**Decision: reuse, not new rules.** Links and QR payloads go through `app.qr.classify()`, so the email path refuses exactly what the QR path refuses. `qr_decode.py` now exposes `decode_image()`, which the email reader imports, and its command-line output is unchanged. Investigation is the unchanged `/api/scans` path with an `email_id` that only links evidence, and only for a target found in that email. The scan manager's origin event now names its type, defaulting to `qr_source`, so `email_source` is host-only like `qr_source`.
+
+**Decision: indicators, no verdict.** Seven deterministic facts (mismatched link text, Reply-To domain, failed header checks, dangerous links, internal links, risky attachment names, QR codes). They are shown as facts. No model reads the email in this change.
+
+**Caps, measured locally:** 2000 levels of nesting are refused in 0.3 s; 3000 parts are cut at 200 in 0.4 s; a 4.4 MB text body is cut at 500 KB in 0.1 s. A 10 s alarm in the sandbox and a 20 s host timeout bound anything else. The Docker path is not yet checked on the VM; that needs an image rebuild, since `email_extract.py` is copied in by name.
+
+**Proxy:** Caddy's 6 MB body limit now covers `/api/email` as well as `/api/qr`, so the QR upload refusal logged above does not repeat for email. 64 KB elsewhere.
+
+## 2026-11-07: gVisor for the decoders
+
+Installed `runsc` (release-20261102.0) from Google's signed apt repository and registered it with Docker. `provision.sh` now does both, and keeps the runtime when it rewrites `daemon.json`.
+
+**Browser sandbox under gVisor, measured:** 33 of 43 checks passed. Every network block held, but DNS failed, because gVisor's netstack bypasses Docker's embedded-DNS NAT, and `--reproduce-nat` and `--reproduce-nftables` did not fix it. The pid and memory probes could not report: a fork flood or reaching 1 GB ends the whole gVisor sandbox (exit 2 or 137), which is containment but a different signal. Decision: do not move the browser yet. A DNS redesign this close to the deadline is a larger risk than the gain.
+
+**Decoders under gVisor:** they have no network, so DNS does not matter. `LD_DECODER_RUNTIME=runsc` applies to the QR decoder and the email extractor. A QR decode took 1.04 s versus 0.83 s on runc, with the same result. `verify_sandbox.sh` adds "decoder has no network" and "decoder runs under gVisor": 42 of 42 pass.

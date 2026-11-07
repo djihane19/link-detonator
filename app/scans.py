@@ -66,7 +66,7 @@ MAX_CONCURRENT_LOG_READS = 4
 SNAPSHOT_CACHE_BYTES = 64 * MIB
 
 # Written only by the manager, so a runner bug or a hostile line cannot end a scan early.
-MANAGER_ONLY_TYPES = frozenset({"scan_finished", "verdict", "qr_source"})
+MANAGER_ONLY_TYPES = frozenset({"scan_finished", "verdict", "qr_source", "email_source"})
 
 
 class QueueFullError(Exception):
@@ -392,8 +392,11 @@ class ScanManager:
             await self._emit(scan, event_type, data, source)
 
         if scan.origin is not None:
+            # The origin names its own event; a QR origin has none and stays qr_source.
+            data = {k: v for k, v in scan.origin.items() if k != "event"}
+            event_type = "email_source" if scan.origin.get("event") == "email_source" else "qr_source"
             async with scan.lock:
-                self._append(scan, "qr_source", scan.origin, "host")
+                self._append(scan, event_type, data, "host")
 
         try:
             await self._runner.run(scan.id, scan.target, emit)

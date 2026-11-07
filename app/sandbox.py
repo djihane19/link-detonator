@@ -126,6 +126,16 @@ def build_runner(settings: Settings) -> SandboxRunner:
     return LocalFixtureRunner(settings) if settings.dev_local_runner else DockerRunner(settings)
 
 
+def decoder_runtime_args(settings: Settings) -> list[str]:
+    """`--runtime` for the file decoders: the decoder runtime, else the sandbox runtime."""
+    runtime = settings.decoder_runtime or settings.runtime
+    if not runtime:
+        return []
+    if not _DOCKER_NAME.fullmatch(runtime):
+        raise ValueError("invalid runtime name")
+    return ["--runtime", runtime]
+
+
 def owner_label(settings: Settings) -> str:
     return f"link-detonator.owner={settings.owner}"
 

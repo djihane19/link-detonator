@@ -1,0 +1,42 @@
+Received: from news.example.com (news.example.com [198.51.100.20]) by
+ mx.example.com; Fri, 06 Nov 2026 17:00:00 +0000
+Authentication-Results: mx.example.com; spf=pass
+ smtp.mailfrom=news.example.com; dkim=pass header.d=example.com; dmarc=pass
+ header.from=example.com
+From: The Example Gardening Club <newsletter@example.com>
+To: member@example.com
+Subject: November notes: bulbs, frost and the seed swap
+Date: Fri, 06 Nov 2026 17:00:00 +0000
+Message-ID: <demo-2.garden@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============0186776574997136529=="
+
+--===============0186776574997136529==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hello members,
+
+This month: planting bulbs before the first frost, and the seed swap on the 2=
+1st.
+Read the full notes: http://fixtures.invalid/benign
+
+The Example Gardening Club
+(A fictional demo email for Link Detonator.)
+
+--===============0186776574997136529==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body>
+<p>Hello members,</p>
+<p>This month: planting bulbs before the first frost, and the seed swap on th=
+e 21st.</p>
+<p><a href=3D"http://fixtures.invalid/benign">Read the full November notes</a=
+></p>
+<p>The Example Gardening Club. A fictional demo email for Link Detonator.</p>
+</body></html>
+
+--===============0186776574997136529==--

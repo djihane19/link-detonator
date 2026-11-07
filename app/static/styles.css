@@ -1343,3 +1343,28 @@ body[data-runner="dev"] .dev-only { display: block; }
   .qr-camera { width: 100%; }
   .qr-panel .arm-row .detonate { width: 100%; }
 }
+
+/* Email input. Reuses the QR panel and payload styles. */
+.email-drop { border: 1px dashed var(--line); padding: 18px; display: grid; gap: 4px; justify-items: center; text-align: center; cursor: pointer; }
+.email-drop:hover, .email-drop:focus-visible, .email-drop.is-over { border-color: var(--tape); }
+.email-drop .hint { margin: 0; }
+.email-drop-title { color: var(--bone); }
+.email-result { display: grid; gap: 10px; min-width: 0; }
+.email-result > * { min-width: 0; }
+.email-result h3 { margin: 10px 0 0; }
+.email-auth { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.email-chip { border: 1px solid var(--line); padding: 2px 10px; }
+.email-chip[data-tone="good"] { border-color: var(--contained); color: var(--contained); }
+.email-chip[data-tone="bad"] { border-color: var(--failed); color: var(--failed); }
+.email-chip[data-tone="warn"] { color: var(--dust); }
+.email-auth-note { margin: 0; }
+.email-indicators { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.email-indicators li[data-indicator] { color: var(--observed); }
+.email-label { color: var(--dust); font-size: 0.9em; }
+.email-link[data-mismatch="yes"] { border-left-color: var(--failed); }
+.email-link[data-mismatch="yes"] .email-anchor { color: var(--observed); }
+.email-attachments { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.email-attachment { border-left: 3px solid var(--line); padding-left: 12px; display: grid; gap: 2px; min-width: 0; }
+.email-attachment[data-risky="yes"] { border-left-color: var(--failed); }
+.email-attachment strong, .email-hash { overflow-wrap: anywhere; }
+.email-hash { color: var(--faint); font-size: 0.85em; }

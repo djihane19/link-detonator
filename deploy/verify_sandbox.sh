@@ -21,11 +21,13 @@ VERIFY_OTHER_RESOLVER="${VERIFY_OTHER_RESOLVER:-9.9.9.9}"
 IMAGE="${LD_IMAGE:-$(env_file_value LD_IMAGE)}"
 IMAGE="${IMAGE:-link-detonator-worker:latest}"
 RUNTIME="${LD_RUNTIME:-$(env_file_value LD_RUNTIME)}"
+# The QR and email decoders may use a different runtime (gVisor) from the browser sandbox.
+DECODER_RUNTIME="${LD_DECODER_RUNTIME:-$(env_file_value LD_DECODER_RUNTIME)}"
 PROBE_SOURCE=$(cat "$SCRIPT_DIR/sandbox_probe.py")
 
 # Checks the contract requires. Each must report at least once, or it counts as a FAIL;
 # a probe that crashes part-way must not read as a clean run.
-REQUIRED_CHECKS="metadata blocked|RFC1918 blocked|host gateway blocked|public-IP blocked|public HTTPS allowed|DNS works|rootfs read-only|/tmp noexec|no capabilities|non-root|no env secrets|pid limit|memory limit|connection cap per destination|browser sees the firewall error|no private answers|live page loads|docker kill stops the sandbox"
+REQUIRED_CHECKS="metadata blocked|RFC1918 blocked|host gateway blocked|public-IP blocked|public HTTPS allowed|DNS works|rootfs read-only|/tmp noexec|no capabilities|non-root|no env secrets|pid limit|memory limit|connection cap per destination|browser sees the firewall error|no private answers|live page loads|docker kill stops the sandbox|decoder has no network"
 
 passes=0
 failures=0
@@ -218,6 +220,45 @@ check_docker_kill() {
   fi
 }
 
+# The file decoders run with no network and, when configured, under gVisor. Same flags as
+# app/qr.py build_decoder_argv; the image arrives on stdin, so there is nothing to mount.
+check_decoder_sandbox() {
+  local name output kernel network uid
+  next_container_name
+  name=$container_name
+  local -a flags=(
+    --rm --init -i --name "$name" --label link-detonator=1 --network none --read-only
+    --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m --cap-drop ALL --security-opt no-new-privileges
+    --pids-limit 64 --memory 256m --memory-swap 256m --cpus 1 --ulimit nofile=256:256
+    --log-driver none --user pwuser
+  )
+  if [[ -n "$DECODER_RUNTIME" ]]; then
+    flags+=(--runtime "$DECODER_RUNTIME")
+  fi
+  output=$(docker run "${flags[@]}" "$IMAGE" python -c '
+import os, platform, socket
+s = socket.socket(); s.settimeout(3)
+try:
+    s.connect(("1.1.1.1", 443)); net = "reachable"
+except OSError as exc:
+    net = type(exc).__name__ + ":" + str(exc.errno)
+print(platform.release(), net, os.getuid(), sep="\t")
+' </dev/null 2>/dev/null || true)
+  IFS=$'\t' read -r kernel network uid <<<"$output"
+  if [[ -n "$network" && "$network" != "reachable" && -n "$uid" && "$uid" != "0" ]]; then
+    report PASS "decoder has no network" "connect -> $network, uid=$uid"
+  else
+    report FAIL "decoder has no network" "output: ${output:-none}"
+  fi
+  if [[ "$DECODER_RUNTIME" == "runsc" ]]; then
+    if [[ "$kernel" == *gvisor* ]]; then
+      report PASS "decoder runs under gVisor" "kernel seen inside: $kernel"
+    else
+      report FAIL "decoder runs under gVisor" "kernel seen inside: ${kernel:-none}"
+    fi
+  fi
+}
+
 # Runs the real worker under the real flags and judges its events. This is what measures
 # the error string the private_network row relies on (FIREWALL_REJECT_ERRORS).
 run_worker_check() {
@@ -254,7 +295,7 @@ main() {
   [[ -n "$host_ip" ]] || die "could not determine the public IP; set LD_PUBLIC_IP"
   first_resolver=${LD_SANDBOX_DNS%% *}
 
-  printf 'Image: %s\nRuntime: %s\nPublic IP: %s\n\n' "$IMAGE" "${RUNTIME:-default}" "$host_ip"
+  printf 'Image: %s\nRuntime: %s\nDecoder runtime: %s\nPublic IP: %s\n\n' "$IMAGE" "${RUNTIME:-default}" "${DECODER_RUNTIME:-default}" "$host_ip"
 
   if "$SCRIPT_DIR/firewall.sh" --check >/dev/null 2>&1; then
     report PASS "firewall rules present" "firewall.sh --check"
@@ -274,6 +315,7 @@ main() {
   run_probe pids
   run_probe memory
   check_running_container
+  check_decoder_sandbox
   check_required_reported
 
   printf '\n%s passed, %s failed\n' "$passes" "$failures"
