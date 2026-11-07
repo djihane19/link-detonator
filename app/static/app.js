@@ -334,6 +334,7 @@ function applyRunner(runner) {
 
 function renderTarget(target) {
   if (!target) return;
+  report.target = target;
   const kind = byId("target-kind");
   const text = byId("target-text");
   clear(text);
@@ -1097,6 +1098,31 @@ function jolt(wallGroup) {
 
 /* ------------------------------------------------------------------ Report: verdict */
 
+/* Only after a benign verdict, only for a real http(s) link, and only on a deliberate click. */
+function safeHttpUrl(value) {
+  try {
+    const url = new URL(String(value));
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function offerOpenLink(verdict) {
+  const box = byId("open-link");
+  if (!box) return;
+  const url = report.target?.kind === "url" ? safeHttpUrl(report.target.value) : null;
+  const sandboxed = verdict.verification?.environment === "docker_sandbox";
+  box.hidden = !(url && sandboxed && verdict.status === "complete" && verdict.classification === "benign");
+  const button = byId("open-link-button");
+  button.onclick = () => {
+    if (!url || box.hidden) return;
+    if (window.confirm(`Open this link in a new tab?\n\n${url}\n\nThe scan found no threats, but that is not a guarantee.`)) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+}
+
 function renderTally(verdict) {
   const tally = byId("verdict-tally");
   if (!tally) return;
@@ -1176,6 +1202,7 @@ function renderVerdict(verdict) {
   card.dataset.status = String(verdict.classification);
   title.textContent = String(verdict.classification);
   renderTally(verdict);
+  offerOpenLink(verdict);
   const environment = verdict.verification?.environment;
   const parts = [scannedText(verdict.summary || "")];
   const opinion = [verdictLine("Model confidence", `${Math.round((verdict.model_confidence || 0) * 100)}% (the model's opinion, not a verified fact)`)];
@@ -1208,37 +1235,84 @@ const QR_KIND_LABELS = {
 function initQr() {
   const button = byId("qr-decode");
   if (!button) return;
-  button.addEventListener("click", decodeQr);
+  button.addEventListener("click", () => decodeQr(byId("qr-file").files[0]));
+  const camera = byId("qr-camera");
+  byId("qr-camera-button").addEventListener("click", () => camera.click());
+  camera.addEventListener("change", () => {
+    if (camera.files[0]) decodeQr(camera.files[0]);
+    camera.value = "";
+  });
 }
 
-async function decodeQr() {
+const QR_MAX_SIDE = 2048;
+const QR_SEND_AS_IS = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+/* Phone photos are large, and may be HEIC. The browser decodes them here, on the user's
+   own device, and sends a JPEG of at most 2048 pixels a side. The server still treats
+   whatever arrives as hostile. */
+async function prepareImage(file) {
+  if (QR_SEND_AS_IS.has(file.type) && file.size <= 1.5 * 1024 * 1024) {
+    try {
+      const probe = await createImageBitmap(file);
+      const small = Math.max(probe.width, probe.height) <= QR_MAX_SIDE;
+      probe.close?.();
+      if (small) return file;
+    } catch {
+      return file;
+    }
+  }
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    throw new Error("This photo could not be read on this device. Try a PNG or JPEG screenshot.");
+  }
+  const scale = Math.min(1, QR_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+  if (!blob) throw new Error("This photo could not be prepared for upload.");
+  return blob;
+}
+
+async function decodeQr(file) {
   const errorBox = byId("qr-error");
   errorBox.hidden = true;
   byId("qr-result").hidden = true;
-  const file = byId("qr-file").files[0];
   if (!file) {
     showError(errorBox, "Choose a QR image first.");
     return;
   }
-  if (file.size > 5 * 1024 * 1024) {
-    showError(errorBox, "The image is larger than 5 MB.");
-    return;
-  }
-  const button = byId("qr-decode");
-  button.disabled = true;
-  button.textContent = "Decoding";
+  const buttons = [byId("qr-decode"), byId("qr-camera-button")];
+  for (const b of buttons) b.disabled = true;
+  byId("qr-decode").textContent = "Decoding";
   try {
-    const response = await fetch("/api/qr", { method: "POST", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file });
+    let upload;
+    try {
+      upload = await prepareImage(file);
+    } catch (error) {
+      showError(errorBox, error.message);
+      return;
+    }
+    if (upload.size > 5 * 1024 * 1024) {
+      showError(errorBox, "The image is larger than 5 MB.");
+      return;
+    }
+    const response = await fetch("/api/qr", { method: "POST", headers: { "Content-Type": upload.type || "application/octet-stream" }, body: upload });
     if (!response.ok) {
       showError(errorBox, await refusalMessage(response));
       return;
     }
     renderQrResult(await response.json());
+    byId("qr-result").scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch {
     showError(errorBox, "Could not reach the server. Check your connection and try again.");
   } finally {
-    button.disabled = false;
-    button.textContent = "Decode";
+    for (const b of buttons) b.disabled = false;
+    byId("qr-decode").textContent = "Decode";
   }
 }
 

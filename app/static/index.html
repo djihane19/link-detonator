@@ -86,9 +86,14 @@
     <section class="qr-panel" aria-labelledby="qr-title">
       <p class="eyebrow">Or scan a QR code</p>
       <h2 id="qr-title" class="stencil">Decode a QR image</h2>
-      <p class="hint">PNG, JPEG or WebP, up to 5 MB. The image is decoded inside a throwaway container with no network. Nothing is opened until you choose to investigate.</p>
+      <p class="hint">Point your phone at a QR code, or upload an image. Large photos are shrunk on your device first. The image is decoded inside a throwaway container with no network, and nothing is opened until you choose to investigate.</p>
+      <div class="qr-actions">
+        <button id="qr-camera-button" class="detonate qr-camera" type="button">Scan with camera</button>
+        <input id="qr-camera" type="file" accept="image/*" capture="environment" hidden>
+        <span class="hint qr-or">or choose an image</span>
+      </div>
       <div class="arm-row">
-        <input id="qr-file" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="qr-error">
+        <input id="qr-file" type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" aria-describedby="qr-error">
         <button id="qr-decode" class="detonate" type="button">Decode</button>
       </div>
       <p id="qr-error" class="form-error" role="alert" hidden></p>

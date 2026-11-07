@@ -763,3 +763,71 @@ def test_benchmark_includes_only_naive_baseline_reports(tmp_path) -> None:
     wrong.write_text(json.dumps({"result_type": "real_model", "cases": []}))
     shown = load_published_benchmark(real, [good, wrong, tmp_path / "missing.json"])
     assert len(shown["baselines"]) == 1 and shown["baselines"][0]["classifications"] == {"LD-001": "benign"}
+
+
+class StubVerdict:
+    def __init__(self, classification: str) -> None:
+        self.classification = classification
+
+    async def evaluate(self, scan_id: str, events: Any) -> dict[str, Any]:
+        return {"status": "complete", "classification": self.classification, "model_classification": self.classification,
+                "model_confidence": 0.9, "summary": "stub", "indicators": [], "policy_decisions": [], "followups": [],
+                "verification": {"environment": "docker_sandbox", "records": []}, "model": {"id": "stub", "calls": 1}}
+
+
+async def script_sandbox(_: str, __: ScanTarget, emit: Any) -> None:
+    await emit("sandbox_created", {"name": "ld-x", "image": "i", "runtime": "runc", "policy": {}}, "host")
+    await emit("worker_finished", {"status": "ok", "error": None}, "worker")
+
+
+@pytest.mark.parametrize(("classification", "payload", "visible"), [
+    ("benign", {"url": "https://example.com/offer"}, True),
+    ("malicious", {"url": "https://example.com/offer"}, False),
+    ("suspicious", {"url": "https://example.com/offer"}, False),
+    ("benign", {"fixture": "benign"}, False),
+])
+def test_open_link_only_after_a_benign_verdict_on_a_real_link(
+    browser: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, classification: str, payload: dict[str, str], visible: bool
+) -> None:
+    monkeypatch.setenv("LD_LIVE_ACCESS_CODE", ACCESS_CODE)
+    app = create_app(settings=Settings(data_dir=tmp_path), runner=FakeRunner(script_sandbox), resolver=fake_resolver,
+                     verdict_engine=StubVerdict(classification))
+    problems: list[str] = []
+    with LoopbackServer(app) as base:
+        page = open_page(browser, base, problems, viewport={"width": 390, "height": 844})
+        page.goto(base + "/")
+        created = page.evaluate(
+            "async (body) => (await fetch('/api/scans', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})).json()",
+            {**payload, "access_code": ACCESS_CODE} if "url" in payload else payload,
+        )
+        page.goto(base + created["report_url"])
+        page.locator(f"#verdict-card[data-status='{classification}']").wait_for(timeout=10_000)
+        assert page.locator("#open-link").is_visible() is visible
+        assert page.locator("main a").count() == 0  # a button, never a link the page could render
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    assert problems == []
+
+
+def test_phone_camera_capture_and_photo_shrinking(browser: Any, tmp_path: Path) -> None:
+    app = create_app(settings=Settings(data_dir=tmp_path), runner=FakeRunner())
+    problems: list[str] = []
+    with LoopbackServer(app) as base:
+        page = open_page(browser, base, problems, viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+        page.goto(base + "/")
+        camera = page.locator("#qr-camera")
+        assert camera.get_attribute("capture") == "environment" and camera.get_attribute("accept") == "image/*"
+        assert page.locator("#qr-camera-button").is_visible()
+        with page.expect_file_chooser() as chooser:
+            page.locator("#qr-camera-button").click()
+        assert chooser.value.element.get_attribute("id") == "qr-camera"
+        shrunk = page.evaluate("""async () => {
+            const canvas = document.createElement('canvas'); canvas.width = 4000; canvas.height = 3000;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 4000, 3000);
+            const big = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+            const out = await prepareImage(new File([big], 'photo.png', {type: 'image/png'}));
+            const bitmap = await createImageBitmap(out);
+            return {type: out.type, width: bitmap.width, height: bitmap.height};
+        }""")
+        assert shrunk == {"type": "image/jpeg", "width": 2048, "height": 1536}
+        assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    assert problems == []

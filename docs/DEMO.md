@@ -27,6 +27,10 @@ Target length **3:45**, under the 4-minute limit. Everything on screen is live a
 | 3:10 to 3:35 | `/benchmark` page, the comparison table first | "Does this matter? Same model, same pages, without our layers: in every run it called one or two attacks safe, including a page that simply told it to. With Link Detonator: none. Eleven of eleven attacks detected, no false alarms. We publish every run, including the failures." |
 | 3:35 to 3:45 | Home page or README | "Link Detonator: built for security teams who triage suspicious links and QR codes. Evidence over claims. Code, live demo and verification evidence are linked in the submission." |
 
+## Optional phone shot (15 seconds, recorded separately)
+
+On a phone, open the live app, tap **Scan with camera** and photograph `demo/qr/1-fake-bank-login.png` on your laptop screen. Show the decoded link, then tap **Investigate this link**. Say: "Same flow on a phone: point, decode in a sandbox, investigate." Real-world QR codes contain live links, which need the access code.
+
 ## If something goes wrong live
 
 - **Scan slow or the AI unavailable:** switch to the prepared report tab and say "here is the same scan from a few minutes ago".

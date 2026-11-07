@@ -1332,3 +1332,14 @@ body[data-runner="dev"] .dev-only { display: block; }
 .bench-naive { display: flex; flex-wrap: wrap; gap: 4px; }
 .naive-chip { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 6px; border: 1px solid var(--line); color: var(--dust); white-space: nowrap; }
 .naive-chip[data-fooled="true"] { color: var(--failed); border-color: var(--failed); font-weight: 700; }
+
+/* Mobile QR capture */
+.qr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.qr-camera { min-height: 48px; }
+.qr-or { margin: 0; }
+.open-link { grid-column: 1 / -1; border: 1px solid var(--contained); padding: 12px 14px; margin: 8px 0; display: grid; gap: 8px; justify-items: start; }
+.open-link .hint { margin: 0; }
+@media (max-width: 560px) {
+  .qr-camera { width: 100%; }
+  .qr-panel .arm-row .detonate { width: 100%; }
+}
