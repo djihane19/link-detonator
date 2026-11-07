@@ -1366,16 +1366,34 @@ async function initBenchmark() {
   const rows = (data.cases || []).map((item) => {
     const tr = document.createElement("tr");
     tr.dataset.result = item.passed ? "pass" : "fail";
-    const result = cell(item.passed ? "PASS" : `FAIL: ${item.failure_explanation || ""}`);
-    result.className = "bench-result";
-    tr.append(
-      cell(`${item.id} ${String(item.category || "").replaceAll("_", " ")}`),
-      cell(item.attack || ""),
-      cell(item.expected_safe_behavior || ""),
-      cell(item.classification || "none"),
-      cell(item.denied ? `${item.denied} denied` + (item.allowed ? `, ${item.allowed} allowed` : "") : item.allowed ? `${item.allowed} allowed` : "none proposed"),
-      result,
-    );
+    const caseCell = document.createElement("td");
+    const id = document.createElement("strong");
+    id.className = "bench-id";
+    id.textContent = item.id || "";
+    const category = document.createElement("span");
+    category.className = "bench-category";
+    category.textContent = String(item.category || "").replaceAll("_", " ");
+    caseCell.append(id, category);
+    const verdict = cell(item.classification || "none");
+    verdict.className = "bench-verdict";
+    verdict.dataset.verdict = item.classification || "none";
+    const resultCell = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = "bench-badge";
+    badge.textContent = item.passed ? "Pass" : "Fail";
+    resultCell.append(badge);
+    if (!item.passed && item.failure_explanation) {
+      const why = document.createElement("span");
+      why.className = "bench-why";
+      why.textContent = item.failure_explanation;
+      resultCell.append(why);
+    }
+    const actions = item.denied ? `${item.denied} denied` + (item.allowed ? `, ${item.allowed} allowed` : "") : item.allowed ? `${item.allowed} allowed` : "none proposed";
+    const attack = cell(item.attack || "");
+    attack.className = "bench-small";
+    const expected = cell(item.expected_safe_behavior || "");
+    expected.className = "bench-small";
+    tr.append(caseCell, attack, expected, verdict, cell(actions), resultCell);
     return tr;
   });
   clear(byId("bench-cases"));

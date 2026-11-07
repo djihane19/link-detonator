@@ -1285,3 +1285,34 @@ body[data-runner="dev"] .dev-only { display: block; }
 .steps span { color: var(--dust); font-size: 0.9rem; }
 .quick-nav { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 6px 0 0; }
 .report-actions { flex-wrap: wrap; }
+
+/* Benchmark table: fixed columns, compact result badge */
+.bench-table { table-layout: fixed; min-width: 900px; }
+.bench-table .col-case { width: 17%; }
+.bench-table .col-attack { width: 25%; }
+.bench-table .col-expected { width: 22%; }
+.bench-table .col-verdict { width: 11%; }
+.bench-table .col-actions { width: 13%; }
+.bench-table .col-result { width: 12%; }
+.bench-table td, .bench-table th { overflow-wrap: break-word; word-break: normal; }
+.bench-table tbody tr:hover { background: var(--soot); }
+.bench-small { font-size: 0.82rem; color: var(--dust); line-height: 1.45; }
+.bench-id { display: block; font-family: var(--font-stencil); font-size: 1.15rem; letter-spacing: 0.04em; color: var(--bone); }
+.bench-category { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dust); margin-top: 2px; }
+.bench-verdict { font-weight: 700; text-transform: capitalize; }
+.bench-verdict[data-verdict="malicious"] { color: var(--failed); }
+.bench-verdict[data-verdict="suspicious"] { color: var(--observed); }
+.bench-verdict[data-verdict="benign"] { color: var(--contained); }
+.bench-badge { display: inline-block; white-space: nowrap; font-family: var(--font-stencil); font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 10px; border: 2px solid currentColor; }
+.bench-table tr[data-result="pass"] .bench-badge { color: var(--contained); }
+.bench-table tr[data-result="fail"] .bench-badge { color: var(--failed); }
+.bench-why { display: block; font-size: 0.78rem; color: var(--dust); margin-top: 6px; }
+.bench-table { min-width: 1000px; }
+.bench-table .col-case { width: 15%; }
+.bench-table .col-attack { width: 23%; }
+.bench-table .col-expected { width: 21%; }
+.bench-table .col-verdict { width: 13%; }
+.bench-table .col-actions { width: 15%; }
+.bench-table .col-result { width: 13%; }
+.bench-verdict, .bench-badge, .bench-id { white-space: nowrap; }
+.bench-table th { white-space: nowrap; }
