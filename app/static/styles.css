@@ -1240,3 +1240,22 @@ body[data-runner="dev"] .dev-only { display: block; }
 .text-link { color: var(--tape); text-decoration: underline; text-underline-offset: 3px; }
 .text-link:hover, .text-link:focus-visible { color: var(--bone); }
 .bench > * { min-width: 0; }
+
+/* QR input */
+.qr-panel { border: 1px solid var(--line); background: var(--soot); padding: 20px; margin: 32px 0; display: grid; gap: 10px; }
+.qr-panel input[type="file"] { color: var(--bone); max-width: 100%; }
+.qr-result { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.qr-preview { width: 100%; max-width: 180px; image-rendering: pixelated; background: #fff; border: 1px solid var(--line); }
+.qr-payloads { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.qr-payload { border-left: 3px solid var(--line); padding-left: 12px; display: grid; gap: 4px; justify-items: start; }
+.qr-payload code { overflow-wrap: anywhere; color: var(--bone); }
+.qr-payload[data-kind="web_url"], .qr-payload[data-kind="test_page"] { border-left-color: var(--tape); }
+.qr-payload[data-kind="dangerous_uri"] { border-left-color: var(--failed); }
+.qr-card { border: 1px solid var(--line); background: var(--soot); padding: 20px; margin: 24px 0; }
+.qr-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; }
+.qr-facts dt { color: var(--dust); }
+.qr-facts dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 560px) { .qr-result { grid-template-columns: minmax(0, 1fr); } }
+.qr-panel, .qr-panel > * { min-width: 0; }
+.qr-panel .arm-row { flex-wrap: wrap; }
+.qr-panel input[type="file"] { min-width: 0; flex: 1 1 180px; width: 100%; }

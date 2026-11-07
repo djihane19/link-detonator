@@ -66,7 +66,7 @@ MAX_CONCURRENT_LOG_READS = 4
 SNAPSHOT_CACHE_BYTES = 64 * MIB
 
 # Written only by the manager, so a runner bug or a hostile line cannot end a scan early.
-MANAGER_ONLY_TYPES = frozenset({"scan_finished", "verdict"})
+MANAGER_ONLY_TYPES = frozenset({"scan_finished", "verdict", "qr_source"})
 
 
 class QueueFullError(Exception):
@@ -91,6 +91,8 @@ class Scan:
     worker_events: int = 0
     # Who submitted it, for the per-client cap. In memory only: never stored or served.
     owner: str | None = None
+    # Where the target came from, such as a decoded QR image. Recorded as the first event.
+    origin: dict[str, Any] | None = None
     # None once finished: the log on disk is then the only copy.
     events: list[dict[str, Any]] | None = None
     changed: asyncio.Event = field(default_factory=asyncio.Event)
@@ -225,7 +227,9 @@ class ScanManager:
         """Scans this client has queued or running."""
         return self._active_by_owner[owner]
 
-    def submit(self, target: ScanTarget, owner: str | None = None, use_reserve: bool = False) -> Scan:
+    def submit(
+        self, target: ScanTarget, owner: str | None = None, use_reserve: bool = False, origin: dict[str, Any] | None = None
+    ) -> Scan:
         if not self.queue_has_room(use_reserve):
             raise QueueFullError
         scan = Scan(
@@ -234,6 +238,7 @@ class ScanManager:
             runner=self._runner_label,
             created_at=self._clock(),
             owner=owner,
+            origin=origin,
             events=[],
         )
         self._scan_dir(scan.id).mkdir(parents=True)
@@ -385,6 +390,10 @@ class ScanManager:
 
         async def emit(event_type: str, data: dict[str, Any], source: str = "worker") -> None:
             await self._emit(scan, event_type, data, source)
+
+        if scan.origin is not None:
+            async with scan.lock:
+                self._append(scan, "qr_source", scan.origin, "host")
 
         try:
             await self._runner.run(scan.id, scan.target, emit)

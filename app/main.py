@@ -21,6 +21,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import PROJECT_ROOT, Settings
 from app.agent.engine import build_engine
+from app import qr as qr_input
 from app.models import FIXTURE_NAMES, ScanAccepted, ScanRequest, ScanTarget
 from app.ratelimit import DAY_S, RateDecision, SlidingWindowLimiter, client_key
 from app.sandbox import SandboxRunner, build_runner, is_loopback_host
@@ -51,6 +52,8 @@ SECURITY_HEADERS: tuple[tuple[bytes, bytes], ...] = (
 )
 
 MAX_BODY_BYTES = 16 * 1024
+QR_UPLOADS_PER_MINUTE = 6
+QR_UPLOADS_PER_HOUR = 60
 # Refused URLs do not use up scan quota, so a typo is not punished. They still cost a
 # DNS lookup, so attempts have their own, wider limit.
 ATTEMPT_LIMIT_FACTOR = 6
@@ -208,6 +211,7 @@ def create_app(
     runner: SandboxRunner | None = None,
     resolver: Resolver | None = None,
     verdict_engine: VerdictEngine | None = None,
+    qr_decoder: qr_input.QrDecoder | None = None,
 ) -> FastAPI:
     active_settings = settings or Settings.from_env()
     active_runner = runner or build_runner(active_settings)
@@ -236,7 +240,7 @@ def create_app(
     app.state.settings = active_settings
 
     dev_runner = not active_runner.isolated
-    _register_api(app, manager, active_settings, resolver, dev_runner)
+    _register_api(app, manager, active_settings, resolver, dev_runner, qr_decoder or qr_input.build_decoder(active_settings))
     _register_pages(app, manager, dev_runner)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app
@@ -318,6 +322,39 @@ async def _read_limited_body(request: Request) -> bytes | None:
     return b"".join(chunks)
 
 
+async def _read_capped(request: Request, limit: int) -> bytes | None:
+    """Reads the body up to `limit` bytes. Returns None if it is larger."""
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > limit:
+            return None
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _qr_origin(meta: dict[str, Any] | None, target: ScanTarget) -> dict[str, Any] | None:
+    """The evidence link, only if this exact target came out of that QR image."""
+    if meta is None:
+        return None
+    for index, payload in enumerate(meta.get("payloads", [])):
+        stored = payload.get("target")
+        if payload.get("investigable") and stored == {"kind": target.kind, "value": target.value}:
+            return {
+                "qr_id": meta["id"],
+                "sha256": meta["sha256"],
+                "format": meta["format"],
+                "decoder": meta["decoder"],
+                "codes_found": meta["codes_found"],
+                "payload_index": index,
+                "payload_display": payload["display"],
+                "payload_kind": payload["kind"],
+                "preview_url": meta["preview_url"],
+            }
+    return None
+
+
 async def _parse_scan_request(request: Request) -> ScanRequest | str:
     """Returns the parsed request, or a message explaining the refusal."""
     media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
@@ -378,7 +415,10 @@ def _register_api(
     settings: Settings,
     resolver: Resolver | None,
     dev_runner: bool,
+    qr_decoder: qr_input.QrDecoder,
 ) -> None:
+    qr_store = qr_input.QrStore(settings)
+    qr_limiter = SlidingWindowLimiter(QR_UPLOADS_PER_MINUTE, QR_UPLOADS_PER_HOUR)
     scan_limiter = SlidingWindowLimiter(settings.rate_per_minute, settings.rate_per_hour)
     attempt_limiter = SlidingWindowLimiter(
         settings.rate_per_minute * ATTEMPT_LIMIT_FACTOR,
@@ -471,6 +511,12 @@ def _register_api(
         if isinstance(target, str):
             return _refusal(400, target)
 
+        origin = None
+        if parsed.qr_id is not None:
+            origin = _qr_origin(qr_store.load(parsed.qr_id), target)
+            if origin is None:
+                return _refusal(400, "That target was not decoded from this QR image.")
+
         # Checked before the limiters, so a full queue does not use up the client's quota.
         if not manager.queue_has_room(use_reserve=trusted):
             return _refusal(503, "The scan queue is full. Try again shortly.")
@@ -478,7 +524,7 @@ def _register_api(
         if spent is not None:
             return spent
         try:
-            scan = manager.submit(target, owner=client, use_reserve=trusted)
+            scan = manager.submit(target, owner=client, use_reserve=trusted, origin=origin)
         except QueueFullError:
             return _refusal(503, "The scan queue is full. Try again shortly.")
         accepted = ScanAccepted(id=scan.id, report_url=f"/r/{scan.id}")
@@ -556,6 +602,51 @@ def _register_api(
             "fixtures": [{"name": name, **FIXTURE_CATALOG[name]} for name in FIXTURE_NAMES],
             "dev_runner": dev_runner,
         }
+
+    @app.post("/api/qr")
+    async def upload_qr(request: Request) -> Response:
+        """Decodes a QR image in a sandbox and returns what it holds. Starts no scan."""
+        if dev_runner and not _arrived_on_loopback(request):
+            return _refusal(403, "The dev runner is not sandboxed, so it only serves loopback.")
+        client = client_of(request)
+        decision = qr_limiter.check(client)
+        if not decision.allowed:
+            return _rate_limited(decision)
+        media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+        declared = qr_input.CONTENT_TYPES.get(media_type)
+        if declared is None:
+            return _refusal(415, "Upload a PNG, JPEG or WebP image.")
+        body = await _read_capped(request, qr_input.MAX_UPLOAD_BYTES)
+        if body is None:
+            return _refusal(413, "The image is larger than 5 MB.")
+        if qr_input.sniff_format(body) != declared:
+            return _refusal(400, "The file is not the image type it claims to be.")
+        try:
+            decoded = await qr_decoder.decode(body)
+        except qr_input.QrError as exc:
+            return _refusal(400, str(exc))
+        meta = await asyncio.to_thread(qr_store.save, body, decoded, qr_decoder.sandboxed)
+        return JSONResponse(qr_input.public_view(meta))
+
+    @app.get("/api/qr/{qr_id}")
+    async def get_qr(qr_id: str, request: Request) -> Response:
+        refused = read_refusal(request)
+        if refused is not None:
+            return refused
+        meta = qr_store.load(qr_id)
+        if meta is None:
+            return _refusal(404, "No such QR upload.")
+        return JSONResponse(qr_input.public_view(meta))
+
+    @app.get("/api/qr/{qr_id}/preview.png")
+    async def qr_preview(qr_id: str, request: Request) -> Response:
+        refused = read_refusal(request)
+        if refused is not None:
+            return refused
+        image = qr_store.preview(qr_id)
+        if image is None:
+            return _refusal(404, "No such preview.")
+        return Response(image, media_type="image/png", headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600"})
 
     @app.get("/api/benchmark")
     async def published_benchmark() -> dict[str, Any]:

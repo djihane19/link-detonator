@@ -225,7 +225,7 @@ function setLaunching(isLaunching) {
 }
 
 async function startScan(payload, errorBox) {
-  for (const box of [byId("arm-error"), byId("rack-error")]) box.hidden = true;
+  for (const box of [byId("arm-error"), byId("rack-error"), byId("qr-error")]) if (box) box.hidden = true;
   setLaunching(true);
   try {
     const response = await fetch("/api/scans", {
@@ -491,6 +491,7 @@ function routeEvent(event, live) {
   if (event.type === "navigation") addHop(data);
   if (event.type === "text_layers") addTextLayers(event);
   if (event.type === "verdict") renderVerdict(data);
+  if (event.type === "qr_source" && event.source === "host") renderQrSource(data);
   if (event.type === "sandbox_created" && event.source === "host") {
     report.sandboxSeen = true;
     applyRunner(null);
@@ -541,6 +542,7 @@ const EVENT_TEXT = {
   scan_error: (d) => ({ title: "Scan error", tone: "bad", lines: [d.message] }),
   scan_finished: (d) => ({ title: `Scan finished: ${d.status || "unknown"}`, lines: [] }),
   verdict: (d) => ({ title: `Verdict: ${d.status || "unknown"}`, lines: [] }),
+  qr_source: (d) => ({ title: "Target decoded from a QR image", lines: [String(d.payload_display || "")] }),
 };
 
 function describeEvent(event) {
@@ -1159,6 +1161,120 @@ function renderVerdict(verdict) {
   body.append(...parts);
 }
 
+/* ------------------------------------------------------------------ QR input */
+
+const QR_PREVIEW_SHAPE = /^\/api\/qr\/[A-Za-z0-9_-]{22}\/preview\.png$/;
+const QR_KIND_LABELS = {
+  web_url: "Web link",
+  test_page: "Built-in test page",
+  dangerous_uri: "Dangerous link type",
+  payment_request: "Payment request",
+  wifi_config: "Wi-Fi details",
+  other_uri: "Other link type",
+  text: "Plain text",
+};
+
+function initQr() {
+  const button = byId("qr-decode");
+  if (!button) return;
+  button.addEventListener("click", decodeQr);
+}
+
+async function decodeQr() {
+  const errorBox = byId("qr-error");
+  errorBox.hidden = true;
+  byId("qr-result").hidden = true;
+  const file = byId("qr-file").files[0];
+  if (!file) {
+    showError(errorBox, "Choose a QR image first.");
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    showError(errorBox, "The image is larger than 5 MB.");
+    return;
+  }
+  const button = byId("qr-decode");
+  button.disabled = true;
+  button.textContent = "Decoding";
+  try {
+    const response = await fetch("/api/qr", { method: "POST", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file });
+    if (!response.ok) {
+      showError(errorBox, await refusalMessage(response));
+      return;
+    }
+    renderQrResult(await response.json());
+  } catch {
+    showError(errorBox, "Could not reach the server. Check your connection and try again.");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Decode";
+  }
+}
+
+function renderQrResult(result) {
+  if (QR_PREVIEW_SHAPE.test(result.preview_url || "")) byId("qr-preview").src = result.preview_url;
+  const payloads = result.payloads || [];
+  const sandbox = result.decoder === "sandbox" ? "Decoded in a network-disabled sandbox." : "DEV: decoded without a sandbox.";
+  byId("qr-summary").textContent = payloads.length
+    ? `${sandbox} Found ${result.codes_found} code${result.codes_found === 1 ? "" : "s"}${result.truncated ? ", showing the first 5" : ""}. Nothing has been opened.`
+    : `${sandbox} No QR code was found in this image.`;
+  const list = byId("qr-payloads");
+  clear(list);
+  for (const payload of payloads) {
+    const item = document.createElement("li");
+    item.className = "qr-payload";
+    item.dataset.kind = payload.kind;
+    const kind = document.createElement("strong");
+    kind.textContent = QR_KIND_LABELS[payload.kind] || payload.kind;
+    const text = document.createElement("code");
+    text.textContent = payload.display;
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent = payload.note || "";
+    item.append(kind, text, note);
+    if (payload.investigable && payload.target) {
+      const go = document.createElement("button");
+      go.type = "button";
+      go.className = "detonate";
+      go.textContent = "Investigate this link";
+      go.addEventListener("click", () => investigateQr(result.id, payload.target));
+      item.append(go);
+    }
+    list.append(item);
+  }
+  byId("qr-result").hidden = false;
+}
+
+function investigateQr(qrId, target) {
+  const payload = target.kind === "fixture" ? { fixture: target.value, qr_id: qrId } : { url: target.value, qr_id: qrId };
+  const code = byId("access-code")?.value.trim();
+  if (code && target.kind === "url") payload.access_code = code;
+  startScan(payload, byId("qr-error"));
+}
+
+function renderQrSource(data) {
+  const card = byId("qr-card");
+  if (!card) return;
+  if (QR_PREVIEW_SHAPE.test(data.preview_url || "")) byId("qr-card-image").src = data.preview_url;
+  const facts = byId("qr-card-facts");
+  clear(facts);
+  const rows = [
+    ["Decoded link", data.payload_display],
+    ["Type", QR_KIND_LABELS[data.payload_kind] || data.payload_kind],
+    ["Codes in image", String(data.codes_found)],
+    ["Image SHA-256", data.sha256],
+    ["Decoder", data.decoder === "sandbox" ? "Network-disabled sandbox" : "DEV: no sandbox"],
+  ];
+  for (const [label, value] of rows) {
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const detail = document.createElement("dd");
+    detail.append(scannedText(String(value ?? "")));
+    facts.append(term, detail);
+  }
+  card.hidden = false;
+}
+
 /* ------------------------------------------------------------------ Benchmark */
 
 const METRIC_LABELS = [
@@ -1248,7 +1364,7 @@ async function initBenchmark() {
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
-  if (page === "home") initHome();
+  if (page === "home") { initHome(); initQr(); }
   if (page === "report") initReport();
   if (page === "benchmark") initBenchmark();
 });

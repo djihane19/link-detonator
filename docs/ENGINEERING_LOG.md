@@ -41,3 +41,11 @@ Newest last. Decisions and evidence, for review by another engineer.
 - Run 2's miss was infrastructure: an app restart's cleanup removed the benchmark's sandbox. Fix: sandboxes carry an owner label, and cleanup removes only its own. The fake Docker ignored all but the first `--filter`, which hid this in tests; it now applies all of them, like Docker.
 
 **Benchmark page** at `/benchmark` shows the published real run. It refuses harness reports, so a test-double result can never appear as model performance.
+
+## 2026-11-07: QR input adapter
+
+**Decision: decode in a sandbox, not in the app.** Parsing an uploaded image in the trusted process would put an image parser in front of the attacker. The decoder runs in the worker image with `--network none`, read-only, 256 MB and 64 pids, and gets the image on stdin. The host checks only size and signature, and validates every field of the decoder's reply as hostile input. The preview the app serves is redrawn by the sandbox, so uploaded bytes are never served back.
+
+**Decision: no new security logic.** Payloads go through `check_url_syntax`, with no DNS at decode time. Investigation then goes through the unchanged `/api/scans` path. `qr_id` only links evidence, and only when the target matches a payload decoded from that image.
+
+**Measured:** OpenCV's default detector missed a 46-character version 4 code that its Aruco detector read. The decoder now combines both: 15 of 15 exact decodes across sizes and payload types. On the VM: decoder container network unreachable (errno 101), and `verify_sandbox.sh` still 40/40 after the image rebuild.

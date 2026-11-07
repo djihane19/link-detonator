@@ -59,6 +59,7 @@ HOST_EVENT_TYPES: frozenset[str] = frozenset(
         "scan_error",
         "scan_finished",
         "verdict",
+        "qr_source",
     }
 )
 
@@ -340,6 +341,8 @@ class ScanRequest(BaseModel):
     url: str | None = None
     fixture: str | None = None
     access_code: str | None = None
+    # Set when the target was decoded from a QR upload; links the scan to that evidence.
+    qr_id: str | None = None
 
     @model_validator(mode="after")
     def _exactly_one(self) -> ScanRequest:

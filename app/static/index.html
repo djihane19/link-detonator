@@ -73,6 +73,24 @@
       </section>
     </section>
 
+    <section class="qr-panel" aria-labelledby="qr-title">
+      <p class="eyebrow">Or scan a QR code</p>
+      <h2 id="qr-title" class="stencil">Decode a QR image</h2>
+      <p class="hint">PNG, JPEG or WebP, up to 5 MB. The image is decoded inside a throwaway container with no network. Nothing is opened until you choose to investigate.</p>
+      <div class="arm-row">
+        <input id="qr-file" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="qr-error">
+        <button id="qr-decode" class="detonate" type="button">Decode</button>
+      </div>
+      <p id="qr-error" class="form-error" role="alert" hidden></p>
+      <div id="qr-result" class="qr-result" hidden>
+        <img id="qr-preview" class="qr-preview" alt="The uploaded QR image, redrawn by the sandbox">
+        <div>
+          <p id="qr-summary" class="hint"></p>
+          <ul id="qr-payloads" class="qr-payloads"></ul>
+        </div>
+      </div>
+    </section>
+
     <section class="range" aria-labelledby="range-title">
       <header class="section-head">
         <h2 id="range-title" class="stencil">Test charges</h2>

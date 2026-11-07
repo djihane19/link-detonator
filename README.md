@@ -12,6 +12,14 @@ The model only proposes. `policy.py` is a deterministic gate that allows one act
 
 See `docs/AUDIT.md` for status and `docs/ENGINEERING_LOG.md` for decisions. Run the benchmark with `make benchmark` (real model, needs the key) or `make harness` (a test model that obeys every attack, which tests the rules only and is not model performance).
 
+## QR codes
+
+A QR code is one more way to submit a link. Upload a PNG, JPEG or WebP image (at most 5 MB and 4096x4096 pixels). It is decoded inside a disposable container with **no network**, read-only, non-root and limited to 256 MB, and the image reaches it only on stdin. The app itself only counts bytes and checks file signatures. It never parses the image.
+
+The decoded payload is shown with its type: web link, built-in test page, dangerous link type (`javascript:`, `data:`, `file:` and similar), payment request, Wi-Fi details (password hidden), other link, or plain text. Nothing is opened, resolved or contacted during decoding. A web link is investigated only after you click, through the normal scan pipeline, with the same URL validation, access code and budgets. The server also checks that the link really came from that QR image. The report starts with a `qr_source` event that only the orchestrator can write: the image's SHA-256, the decoded link, and a preview redrawn by the sandbox. The original upload is kept as evidence but never served.
+
+**Limits:** no PDF, batch or OCR support. Decoding uses OpenCV's two QR detectors combined, and a damaged or unusual code may still not be read. A shortened link's real destination is unknown until investigated. Live links need the operator's access code, like any live scan.
+
 ## Verification status
 
 | Part | Status |
