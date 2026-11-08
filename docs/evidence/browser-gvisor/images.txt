@@ -1,0 +1,14 @@
+== production image
+sha256:ae0a280682e49ba002a680db8300438ecf0ac65ee1a382bc8c1eecf3daf35fc6 created 2026-11-07T20:47:49.497427224Z
+worker.py in :latest == commit 6a3fcec
+== building candidate image from commit bfff013
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a
+worker.py in gvisor-bfff013 == commit bfff013
+link-detonator-worker:candidate 1b88871c6c6d digest=sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a
+link-detonator-worker:gvisor-bfff013 1b88871c6c6d digest=sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a
+link-detonator-worker:latest ae0a280682e4 digest=sha256:ae0a280682e49ba002a680db8300438ecf0ac65ee1a382bc8c1eecf3daf35fc6
+link-detonator-worker:prod-6a3fcec ae0a280682e4 digest=sha256:ae0a280682e49ba002a680db8300438ecf0ac65ee1a382bc8c1eecf3daf35fc6

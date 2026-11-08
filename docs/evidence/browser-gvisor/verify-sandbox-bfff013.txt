@@ -1,0 +1,51 @@
+Image: link-detonator-worker:gvisor-bfff013
+Runtime: runsc
+Decoder runtime: runsc
+Public IP: 185.92.220.83
+
+PASS  firewall rules present    firewall.sh --check
+PASS  metadata blocked          169.254.169.254:80 -> EHOSTUNREACH
+PASS  RFC1918 blocked           10.0.0.1:80 -> EHOSTUNREACH
+PASS  RFC1918 blocked           172.16.0.1:80 -> EHOSTUNREACH
+PASS  RFC1918 blocked           192.168.0.1:80 -> EHOSTUNREACH
+PASS  CGNAT blocked             100.64.0.1:80 -> EHOSTUNREACH
+PASS  host gateway blocked      172.30.0.1:22 -> EHOSTUNREACH
+PASS  host gateway blocked      172.30.0.1:80 -> EHOSTUNREACH
+PASS  host gateway blocked      172.30.0.1:443 -> EHOSTUNREACH
+PASS  host gateway blocked      172.30.0.1:8000 -> EHOSTUNREACH
+PASS  public-IP blocked         185.92.220.83:22 -> EHOSTUNREACH
+PASS  public-IP blocked         185.92.220.83:80 -> EHOSTUNREACH
+PASS  public-IP blocked         185.92.220.83:443 -> EHOSTUNREACH
+PASS  public-IP blocked         185.92.220.83:8000 -> EHOSTUNREACH
+PASS  other ports blocked       1.1.1.1:22 -> EHOSTUNREACH
+PASS  unpinned DNS blocked      9.9.9.9:53 -> TimeoutError
+PASS  IPv6 egress blocked       ENETUNREACH
+PASS  DNS works                 example.com -> 2 address(es)
+PASS  public HTTPS allowed      example.com: HTTP/1.1 200 OK
+PASS  connection cap per destination  attempt 33 -> EHOSTUNREACH
+PASS  firewall rule hit         metadata: 34 -> 35 packets
+PASS  firewall rule hit         RFC1918 10/8: 27 -> 28 packets
+PASS  firewall rule hit         RFC1918 172.16/12: 16 -> 17 packets
+PASS  firewall rule hit         RFC1918 192.168/16: 12 -> 13 packets
+PASS  firewall rule hit         CGNAT: 9 -> 10 packets
+PASS  firewall rule hit         other ports: 111 -> 114 packets
+PASS  firewall rule hit         host and public IP: 91 -> 106 packets
+PASS  browser sees the firewall error  errors for private targets: net::ERR_ADDRESS_UNREACHABLE x6
+PASS  no private answers        0 answer(s) from past the firewall
+PASS  live page loads           navigation statuses: [200]
+PASS  rootfs read-only          mounted ro=True, write -> EROFS
+PASS  /tmp noexec               exec -> refused
+PASS  no capabilities           CapBnd=0000000000000000 CapEff=0000000000000000 NoNewPrivs=True
+PASS  non-root                  uid=1001 gid=1001
+PASS  no env secrets            secret-like variable names: none
+PASS  browser runs under gVisor  kernel seen inside: 4.19.0-gvisor
+PASS  pid limit                 gVisor sandbox ended after 111 guest processes (pids-limit 256, exit 2)
+PASS  memory limit              gVisor sandbox OOM-killed by the host after 992 MiB (memory limit 1073741824, exit 137)
+PASS  chromium sandbox active   page renderers (seccomp, uid range): [('2', '1')]
+PASS  no env secrets            Config.Env holds none of 4 compared value(s)
+PASS  no mounts                 only the read-only resolver file (/etc/link-detonator/sandbox-resolv.conf>/etc/resolv.conf>false;)
+PASS  docker kill stops the sandbox  not running 100 ms after docker kill
+PASS  decoder has no network    connect -> OSError:101, uid=1001
+PASS  decoder runs under gVisor  kernel seen inside: 4.19.0-gvisor
+
+44 passed, 0 failed

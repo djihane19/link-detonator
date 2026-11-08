@@ -1,0 +1,87 @@
+### end-to-end on commit bfff013, image gvisor-bfff013, 2026-11-08T14:28:15Z
+### before: 0 containers
+== hostile-gauntlet  scan=1kdf4UoEDgT3shF7x0Fwag  status=partial  wall=25.2s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 0, "oom_killed": false}
+   worker: partial  verdict: complete malicious
+   events: {'dialog': 1, 'download_attempt': 1, 'form': 1, 'navigation': 2, 'page_unresponsive': 2, 'popup': 1, 'request': 7, 'request_failed': 4, 'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'screenshot': 2, 'secret_audit': 1, 'text_layers': 1, 'verdict': 1, 'worker_finished': 1, 'worker_started': 1}
+   blocked: {'net::ERR_CONNECTION_REFUSED': 1, 'net::ERR_ADDRESS_UNREACHABLE': 2, 'net::ERR_ABORTED': 1}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 30 events and 2 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 29
+== phish-login  scan=xQtRWYxcD1EE_9LQKXohGw  status=ok  wall=21.1s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 0, "oom_killed": false}
+   worker: ok  verdict: complete malicious
+   events: {'form': 1, 'navigation': 3, 'request': 3, 'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'screenshot': 5, 'secret_audit': 1, 'text_layers': 1, 'verdict': 1, 'worker_finished': 1, 'worker_started': 1}
+   blocked: {}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 21 events and 5 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 20
+== hostile-download  scan=DxdB9Yfkf-JaOpeBMrYPzA  status=ok  wall=21.1s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 0, "oom_killed": false}
+   worker: ok  verdict: complete malicious
+   events: {'download_attempt': 1, 'navigation': 2, 'request': 2, 'request_failed': 1, 'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'screenshot': 5, 'secret_audit': 1, 'text_layers': 1, 'verdict': 1, 'worker_finished': 1, 'worker_started': 1}
+   blocked: {'net::ERR_ABORTED': 1}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 20 events and 5 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 19
+== hostile-ssrf  scan=qsRmvs8ENGci-VxHYRk1Uw  status=ok  wall=22.1s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 0, "oom_killed": false}
+   worker: ok  verdict: complete malicious
+   events: {'navigation': 1, 'request': 11, 'request_failed': 10, 'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'screenshot': 5, 'secret_audit': 1, 'text_layers': 1, 'verdict': 1, 'worker_finished': 1, 'worker_started': 1}
+   blocked: {'net::ERR_ADDRESS_UNREACHABLE': 6, 'net::ERR_CONNECTION_REFUSED': 3, 'Error in connection establishment: net::ERR_CONNECTION_REFUSED': 1}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 36 events and 5 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 35
+== benign  scan=9sKbgKY1lsinwMWNMT0LMQ  status=ok  wall=20.1s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 0, "oom_killed": false}
+   worker: ok  verdict: complete benign
+   events: {'form': 1, 'navigation': 1, 'request': 1, 'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'screenshot': 5, 'secret_audit': 1, 'text_layers': 1, 'verdict': 1, 'worker_finished': 1, 'worker_started': 1}
+   blocked: {}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 17 events and 5 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 16
+== hostile-freeze  scan=FcRsW-ETGV0ahERA_vyFXw  status=partial  wall=18.1s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 0, "oom_killed": false}
+   worker: partial  verdict: complete inconclusive
+   events: {'navigation': 1, 'page_unresponsive': 2, 'request': 1, 'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'screenshot': 1, 'secret_audit': 1, 'text_layers': 1, 'verdict': 1, 'worker_finished': 1, 'worker_started': 1}
+   blocked: {}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 14 events and 1 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 13
+== hostile-memory  scan=uhvna8sihroyZAAmIGR4ag  status=partial  wall=10.1s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 137, "oom_killed": true}
+   worker: None  verdict: complete suspicious
+   events: {'navigation': 1, 'request': 1, 'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'screenshot': 1, 'secret_audit': 1, 'text_layers': 1, 'verdict': 1, 'worker_started': 1}
+   blocked: {}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 11 events and 1 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 10
+
+### failure path: early stop (LD_DEADLINE_S=6: the worker's own deadline, 75% of it, ends the scan first; the host docker-kill path is the "docker kill stops the sandbox" check in verify-sandbox-bfff013.txt)
+== hostile-freeze  scan=L5BMC_1KW6MHPoSFykh9ew  status=partial  wall=5.1s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 0, "oom_killed": false}
+   worker: partial  verdict: complete inconclusive
+   events: {'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'secret_audit': 1, 'verdict': 1, 'worker_finished': 1, 'worker_started': 1}
+   blocked: {}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 8 events and 0 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 7
+== hostile-gauntlet  scan=LLa2dSVsLNYeAxfQkRcfkw  status=partial  wall=5.0s
+   sandbox: runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+   exit: {"exit_code": 0, "oom_killed": false}
+   worker: partial  verdict: complete inconclusive
+   events: {'sandbox_created': 1, 'sandbox_exit': 1, 'sandbox_removed': 1, 'scan_finished': 1, 'secret_audit': 1, 'verdict': 1, 'worker_finished': 1, 'worker_started': 1}
+   blocked: {}
+   removal verified by host: True   host teardown now: containers=0 runsc-sandbox=0 runsc-gofer=0
+   receipt CLI: exit 0 OK: 8 events and 0 screenshot hashes are consistent
+   receipt CLI on a 1-field edit: exit 1 FAIL: chain breaks at event 7
+
+### after: containers=0 runsc-sandbox=0 units=0
