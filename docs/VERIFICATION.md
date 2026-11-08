@@ -15,9 +15,76 @@ A failed connection alone is not proof, since nothing might be listening there. 
 - **Network boundary under gVisor, tested separately** with a live canary listener on the host and a live neighbour sandbox, plus DNS rebinding and redirects: see [evidence/browser-gvisor/](evidence/browser-gvisor/) and the summary below.
 - **Runs on:** the one VM below. Re-run it after any change to Docker, the kernel or the firewall.
 
-## Latest run (raw output, 2026-11-08, browser and decoders under gVisor)
+## Post-deployment (production, 2026-11-08 14:41 to 14:44 UTC)
 
-Run on this VM with the release image `link-detonator-worker:gvisor-bfff013` and the release settings (`LD_RUNTIME=runsc`, `LD_DECODER_RUNTIME=runsc`, `LD_SANDBOX_RESOLV_CONF`, `LD_CHROMIUM_SANDBOX=1`), before the switch-over. It is re-run after deployment.
+Production runs the code of commit `3b52bef` (browser code from `fa95556`) with the worker image pinned by ID: `LD_IMAGE=sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a`, `LD_RUNTIME=runsc`, `LD_DECODER_RUNTIME=runsc`, `LD_SANDBOX_RESOLV_CONF=/etc/link-detonator/sandbox-resolv.conf`, `LD_CHROMIUM_SANDBOX=1`. The `:latest` tag is not the release identity and still names the previous image. Raw output: [evidence/browser-gvisor/post-deploy/](evidence/browser-gvisor/post-deploy/).
+
+- **Deployed code:** all 142 files of `3b52bef` installed, 0 differing, no extra files (the deploy log calls it `cd875a3`, its hash before the history rewrite described in the evidence README); the running process's settings name the image ID above.
+- **`verify_sandbox.sh`, run by the deploy with the app stopped and the settings read from `app.env`:** 44 passed, 0 failed (raw output below).
+- **Health:** `{"status":"ok","runner":"sandbox"}`; home, report, benchmark pages HTTP 200. Downtime 64 s.
+- **Gauntlet through the public URL:** verdict malicious (model malicious, confidence 0.95), 30 events, private and metadata requests failed with `ERR_ADDRESS_UNREACHABLE`, removal verified, secret audit passed. The host saw the scan container run the release image ID under `runsc`, read-only, with only the resolver file mounted read-only.
+- **Receipt:** downloaded with its screenshots and verified on a separate machine with `tools/verify_receipt.py` and the digest saved at scan time: OK. Changing the verdict in it: FAIL.
+- **Teardown:** 0 containers, 0 `runsc-sandbox`, `runsc-gofer` or `runsc` processes, 0 runsc state directories.
+
+```
+Image: sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a
+Runtime: runsc
+Decoder runtime: runsc
+Public IP: 185.92.220.83
+
+PASS  firewall rules present    firewall.sh --check
+PASS  metadata blocked          169.254.169.254:80 -> EHOSTUNREACH
+PASS  RFC1918 blocked           10.0.0.1:80 -> EHOSTUNREACH
+PASS  RFC1918 blocked           172.16.0.1:80 -> EHOSTUNREACH
+PASS  RFC1918 blocked           192.168.0.1:80 -> EHOSTUNREACH
+PASS  CGNAT blocked             100.64.0.1:80 -> EHOSTUNREACH
+PASS  host gateway blocked      172.30.0.1:22 -> EHOSTUNREACH
+PASS  host gateway blocked      172.30.0.1:80 -> EHOSTUNREACH
+PASS  host gateway blocked      172.30.0.1:443 -> EHOSTUNREACH
+PASS  host gateway blocked      172.30.0.1:8000 -> EHOSTUNREACH
+PASS  public-IP blocked         185.92.220.83:22 -> EHOSTUNREACH
+PASS  public-IP blocked         185.92.220.83:80 -> EHOSTUNREACH
+PASS  public-IP blocked         185.92.220.83:443 -> EHOSTUNREACH
+PASS  public-IP blocked         185.92.220.83:8000 -> EHOSTUNREACH
+PASS  other ports blocked       1.1.1.1:22 -> EHOSTUNREACH
+PASS  unpinned DNS blocked      9.9.9.9:53 -> TimeoutError
+PASS  IPv6 egress blocked       ENETUNREACH
+PASS  DNS works                 example.com -> 2 address(es)
+PASS  public HTTPS allowed      example.com: HTTP/1.1 200 OK
+PASS  connection cap per destination  attempt 33 -> EHOSTUNREACH
+PASS  firewall rule hit         metadata: 40 -> 41 packets
+PASS  firewall rule hit         RFC1918 10/8: 33 -> 34 packets
+PASS  firewall rule hit         RFC1918 172.16/12: 19 -> 20 packets
+PASS  firewall rule hit         RFC1918 192.168/16: 15 -> 16 packets
+PASS  firewall rule hit         CGNAT: 10 -> 11 packets
+PASS  firewall rule hit         other ports: 123 -> 126 packets
+PASS  firewall rule hit         host and public IP: 106 -> 121 packets
+PASS  browser sees the firewall error  errors for private targets: net::ERR_ADDRESS_UNREACHABLE x6
+PASS  no private answers        0 answer(s) from past the firewall
+PASS  live page loads           navigation statuses: [200]
+PASS  rootfs read-only          mounted ro=True, write -> EROFS
+PASS  /tmp noexec               exec -> refused
+PASS  no capabilities           CapBnd=0000000000000000 CapEff=0000000000000000 NoNewPrivs=True
+PASS  non-root                  uid=1001 gid=1001
+PASS  no env secrets            secret-like variable names: none
+PASS  browser runs under gVisor  kernel seen inside: 4.19.0-gvisor
+PASS  pid limit                 gVisor sandbox ended after 111 guest processes (pids-limit 256, exit 2)
+PASS  memory limit              gVisor sandbox OOM-killed by the host after 992 MiB (memory limit 1073741824, exit 137)
+PASS  chromium sandbox active   page renderers (seccomp, uid range): [('2', '1')]
+PASS  no env secrets            Config.Env holds none of 4 compared value(s)
+PASS  no mounts                 only the read-only resolver file (/etc/link-detonator/sandbox-resolv.conf>/etc/resolv.conf>false;)
+PASS  docker kill stops the sandbox  not running 100 ms after docker kill
+PASS  decoder has no network    connect -> OSError:101, uid=1001
+PASS  decoder runs under gVisor  kernel seen inside: 4.19.0-gvisor
+
+44 passed, 0 failed
+```
+
+## Pre-deployment tests (2026-11-08, before the switch-over)
+
+Everything from here to "Rollback" ran before production changed, with the release image `link-detonator-worker:gvisor-bfff013` (same image ID) and the release settings set per command, beside the old production app.
+
+### verify_sandbox.sh, pre-deployment raw output
 
 ```
 Image: link-detonator-worker:gvisor-bfff013
@@ -75,7 +142,7 @@ PASS  decoder runs under gVisor  kernel seen inside: 4.19.0-gvisor
 
 The run of 2026-11-07, with the browser on the standard runtime, passed 42 of 42; it is in the git history of this file.
 
-## Network boundary under gVisor (2026-11-08)
+### Network boundary under gVisor (pre-deployment)
 
 The checks above use addresses where nothing may be listening, so a refusal alone could be a closed port. This separate test puts real services behind the targets. Raw output: [evidence/browser-gvisor/network-boundary.txt](evidence/browser-gvisor/network-boundary.txt), scripts in [evidence/browser-gvisor/scripts/](evidence/browser-gvisor/scripts/).
 
@@ -85,17 +152,16 @@ The checks above use addresses where nothing may be listening, so a refusal alon
 - **Public access kept.** The pinned resolvers answered, `1.1.1.1:443` connected, and `example.com` and `www.wikipedia.org` loaded with HTTP 200.
 - **The test weakened nothing.** No rule was added: `iptables-save` was identical before and after (counters ignored). From outside the VM, the canary port timed out while it was listening, so ufw kept it closed. Listener stopped, 0 containers left.
 
-## End-to-end scans and teardown (2026-11-08)
+### End-to-end scans and teardown (pre-deployment)
 
 Through the app's API with the release image: [evidence/browser-gvisor/e2e-bfff013.txt](evidence/browser-gvisor/e2e-bfff013.txt). Successful scans (Gauntlet, phishing, download, SSRF, benign) and failing ones (a frozen page, an out-of-memory page killed by the host with exit 137, and two scans stopped early by a 4.5 s worker deadline). After every one: removal verified by the host, 0 labelled containers, 0 `runsc-sandbox` and 0 `runsc-gofer` processes. Every receipt passed `tools/verify_receipt.py` with the saved digest and the downloaded screenshots, and failed after a one-field edit.
 
 ## Rollback
 
-The previous production image is kept as `link-detonator-worker:prod-6a3fcec` (image ID `sha256:ae0a280682e49ba002a680db8300438ecf0ac65ee1a382bc8c1eecf3daf35fc6`), built from commit `6a3fcec`. To return to the standard runtime:
+Prepared and checked before the deploy; scripts in [evidence/browser-gvisor/post-deploy/](evidence/browser-gvisor/post-deploy/) (`backup.sh`, `deploy.sh`, `rollback.sh`). Kept on the VM:
 
-1. Remove `LD_RUNTIME`, `LD_SANDBOX_RESOLV_CONF` and `LD_CHROMIUM_SANDBOX` from `/etc/link-detonator/app.env` (keep `LD_DECODER_RUNTIME=runsc`, which predates this change), or set `LD_CHROMIUM_SANDBOX=0` and `LD_RUNTIME=`.
-2. `docker tag link-detonator-worker:prod-6a3fcec link-detonator-worker:latest`
-3. Restore the code of commit `6a3fcec`: the deploy keeps a copy of the previous tree at `/opt/link-detonator.prod-6a3fcec`, so `rsync -a --delete --exclude=.venv --exclude=data /opt/link-detonator.prod-6a3fcec/ /opt/link-detonator/` (or `git archive 6a3fcec | tar -x -C /opt/link-detonator`), then `systemctl restart link-detonator`.
-4. Run `deploy/verify_sandbox.sh`; it should report 42 of 42 with "Runtime: default".
+- **Code:** `/opt/link-detonator.prod-6a3fcec`, the previous tree with its virtualenv (scan data stays in place). A dry-run restore before the deploy changed 0 entries.
+- **Settings:** the complete previous `app.env`, with owner and mode, in `/root/release-backup-20261108/`. It had no `LD_IMAGE`, `LD_RUNTIME`, `LD_SANDBOX_RESOLV_CONF` or `LD_CHROMIUM_SANDBOX`, and `LD_DECODER_RUNTIME=runsc`.
+- **Image:** `link-detonator-worker:prod-6a3fcec` = `sha256:ae0a280682e49ba002a680db8300438ecf0ac65ee1a382bc8c1eecf3daf35fc6`, built from commit `6a3fcec`.
 
-Step 1 alone, with a restart, already returns the browser to runc: the new code with default settings builds exactly the earlier argv. Steps 2 and 3 return the code as well.
+`bash /root/release-backup-20261108/rollback.sh` stops the app, restores the code, copies back the complete `app.env` (so the browser returns to runc with `--no-sandbox` and the default image), points `:latest` at the previous image, checks all three, runs `verify_sandbox.sh` (expected 42 of 42, "Runtime: default") and starts the app. The deploy script ran it automatically on any failed check; none failed.

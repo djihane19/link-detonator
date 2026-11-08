@@ -1,0 +1,1 @@
+/ld-ftJg290Vl-ealO6Eob3ybA image=sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a runtime=runsc readonly=true mounts=/etc/link-detonator/sandbox-resolv.conf>/etc/resolv.conf:rw=false 

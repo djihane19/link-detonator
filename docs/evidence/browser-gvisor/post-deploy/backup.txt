@@ -1,0 +1,11 @@
+### backup 2026-11-08T14:40:50Z
+previous code commit: 6a3fcec (production files == its tracked files, checked)
+previous image ref: link-detonator-worker:latest (LD_IMAGE unset) = sha256:ae0a280682e49ba002a680db8300438ecf0ac65ee1a382bc8c1eecf3daf35fc6
+previous image tag kept: link-detonator-worker:prod-6a3fcec = sha256:ae0a280682e49ba002a680db8300438ecf0ac65ee1a382bc8c1eecf3daf35fc6
+app.env sha256: (kept on the VM only)  mode/owner: 640 root:detonator
+app.env keys: LD_DECODER_RUNTIME LD_LIVE_ACCESS_CODE LD_TRUST_PROXY VULTR_API_KEY 
+code copy: /opt/link-detonator.prod-6a3fcec (2149 files incl. .venv)
+### rollback readiness (all must be empty or OK):
+  code dry-run restore would change: 0 entries
+  app.env backup: identical, mode 640 root:detonator
+  image tag prod-6a3fcec: OK

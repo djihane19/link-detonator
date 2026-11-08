@@ -1,0 +1,19 @@
+### 14:41:08 preconditions
+### 14:41:08 stop app
+### 14:41:08 install code of cd875a3
+  files: release 142, deployed 142, differing 0
+### 14:41:08 settings: pin image by ID, browser under gVisor
+  app.env 640 root:detonator; release keys: LD_DECODER_RUNTIME=runsc LD_IMAGE=sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a LD_RUNTIME=runsc LD_SANDBOX_RESOLV_CONF=/etc/link-detonator/sandbox-resolv.conf LD_CHROMIUM_SANDBOX=1 
+  other keys unchanged: yes
+### 14:41:08 firewall check
+[firewall.sh] sandbox firewall in place
+### 14:41:09 verify_sandbox.sh (app stopped, settings from app.env)
+Image: sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a
+Runtime: runsc
+Decoder runtime: runsc
+Public IP: 185.92.220.83
+44 passed, 0 failed
+### 14:42:11 start app
+  health: {"status":"ok","runner":"sandbox","queued":0,"running":0}
+  running process settings: LD_CHROMIUM_SANDBOX=1 LD_DECODER_RUNTIME=runsc LD_IMAGE=sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a LD_RUNTIME=runsc LD_SANDBOX_RESOLV_CONF=/etc/link-detonator/sandbox-resolv.conf 
+### 14:42:12 deploy phase done; external checks next

@@ -1,0 +1,18 @@
+### post-deployment Gauntlet, public URL https://185.92.220.83.sslip.io, scan ftJg290Vl-ealO6Eob3ybA, started 14:42:39Z, 28 s, status partial (the page freezes the browser by design)
+sandbox_created: image=sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a runtime=runsc chromium_sandbox=True resolver=pinned read-only file
+verdict: complete malicious | model: malicious | confidence 0.95
+events: 30 artifacts: 2 | blocked: ['net::ERR_CONNECTION_REFUSED', 'net::ERR_ADDRESS_UNREACHABLE', 'net::ERR_ADDRESS_UNREACHABLE', 'net::ERR_ABORTED']
+contained: {'sandbox_exit': {'exit_code': 0, 'oom_killed': False}, 'sandbox_removed': {'verified': True}} | secret audit: {'canary': True, 'checked_count': 3, 'ok': True}
+final digest: c2f3ef79a6d95189f87bcc86e414cb3e0ca260de34abff81adfa5f53c59d96f2
+### container observed on the host during the scan (docker inspect, every 0.5 s):
+/ld-ftJg290Vl-ealO6Eob3ybA image=sha256:1b88871c6c6de4b4c8f8ed45a124613a2b98a32e35223e471686fefdbdccf71a runtime=runsc readonly=true mounts=/etc/link-detonator/sandbox-resolv.conf>/etc/resolv.conf:rw=false 
+### independent receipt verification, on the operator laptop, verifier from commit cd875a3, digest saved at scan time:
+$ python3 -I tools/verify_receipt.py receipt.json --digest c2f3ef79a6d95189f87bcc86e414cb3e0ca260de34abff81adfa5f53c59d96f2 --screenshots screenshots
+OK: 30 events and 2 screenshot hashes are consistent
+final digest c2f3ef79a6d95189f87bcc86e414cb3e0ca260de34abff81adfa5f53c59d96f2
+exit 0
+$ (same receipt with the verdict changed to benign)
+FAIL: chain breaks at event 28
+exit 1
+### pages after deploy: / 200, /r/ftJg290Vl-ealO6Eob3ybA 200, /benchmark 200, /api/benchmark 200
+### teardown 14:44:02Z: containers=0 (all: 0) runsc-sandbox=0 runsc-gofer=0 runsc=0, runsc state dirs: 0
