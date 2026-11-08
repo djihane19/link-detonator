@@ -143,10 +143,14 @@ def probe_filesystem() -> None:
 
 def probe_rootfs() -> None:
     read_only = bool(os.statvfs("/").f_flag & os.ST_RDONLY)
+    # Written into a folder this user owns on the root filesystem, so only a read-only
+    # mount can refuse it; a root-owned folder would refuse with EACCES regardless.
+    home = os.path.expanduser("~")
+    target = os.path.join(home if os.path.isdir(home) and os.stat(home).st_uid == os.getuid() else "/", "ld-rootfs-probe")
     try:
-        with open("/ld-rootfs-probe", "w"):
+        with open(target, "w"):
             pass
-        os.unlink("/ld-rootfs-probe")
+        os.unlink(target)
         write = "write succeeded"
     except OSError as exc:
         write = errno.errorcode.get(exc.errno or 0, str(exc))
@@ -252,7 +256,44 @@ def probe_memory() -> None:
          f"memory.max={limit}, allocator killed={killed} after {reached_mib} MiB")
 
 
+def probe_chromium_sandbox(url: str) -> None:
+    """Chromium's own sandbox, judged from its renderers: a seccomp filter (Seccomp 2) and
+    their own user namespace (a single mapped uid). Launch success alone is not enough."""
+    import asyncio
+    from playwright.async_api import async_playwright
+
+    def renderers() -> list[tuple[str, str]]:
+        found = []
+        for pid in os.listdir("/proc"):
+            if not pid.isdigit() or int(pid) == os.getpid():
+                continue
+            try:
+                cmdline = open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="replace")
+                fields = dict(line.split(":", 1) for line in open(f"/proc/{pid}/status") if ":" in line)
+                uid_map = open(f"/proc/{pid}/uid_map").read().split()
+            except OSError:
+                continue
+            if "--type=renderer" in cmdline and "chrom" in cmdline.split(" ", 1)[0]:
+                found.append((fields.get("Seccomp", "?").strip(), uid_map[2] if len(uid_map) > 2 else "?"))
+        return found
+
+    async def run() -> list[tuple[str, str]]:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(chromium_sandbox=True)
+            before = {tuple(r) for r in renderers()}
+            page = await browser.new_page()
+            await page.goto(url, timeout=30_000)
+            after = renderers()
+            await browser.close()
+            return [r for r in after if tuple(r) not in before] or after
+
+    rows = asyncio.run(run())
+    sandboxed = bool(rows) and all(seccomp == "2" and span == "1" for seccomp, span in rows)
+    emit(sandboxed, "chromium sandbox active", f"page renderers (seccomp, uid range): {rows}")
+
+
 COMMANDS = {
+    "chromium-sandbox": probe_chromium_sandbox,
     "network": probe_network,
     "filesystem": probe_filesystem,
     "identity": probe_identity,

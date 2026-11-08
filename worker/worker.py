@@ -596,6 +596,10 @@ class Config:
     deadline_s: float
     dwell_s: float
     work_root: Path
+    # Chromium's own sandbox. It needs user namespaces, which gVisor provides inside its
+    # sandbox and the host refuses to an unprivileged container, so the host asks for it
+    # only when the browser runs under gVisor.
+    chromium_sandbox: bool = False
 
 
 _log_lines_left = MAX_LOG_LINES
@@ -888,9 +892,11 @@ def url_is_non_public(url: str) -> bool:
     return address_is_non_public(host)
 
 
-def chromium_args(offline: bool) -> list[str]:
+def chromium_args(offline: bool, chromium_sandbox: bool = False) -> list[str]:
     features = ",".join((*PLAYWRIGHT_DISABLED_FEATURES, *LOCAL_NETWORK_GATE_FEATURES))
-    args = ["--no-sandbox", "--disable-gpu", f"--disable-features={features}"]
+    args = ["--disable-gpu", f"--disable-features={features}"]
+    if not chromium_sandbox:
+        args.insert(0, "--no-sandbox")
     if offline:
         # context.route misses preconnects, WebRTC and the next hop of an HTTP
         # redirect. They die here, so a local run cannot reach the real network.
@@ -1074,7 +1080,8 @@ class Scan:
             self.playwright.chromium.launch_persistent_context(
                 user_data_dir=str(self.workdir / "profile"),
                 headless=True,
-                args=chromium_args(offline),
+                args=chromium_args(offline, self.config.chromium_sandbox),
+                chromium_sandbox=self.config.chromium_sandbox,
                 env=chromium_env(self.workdir),
                 viewport=VIEWPORT,
                 # Denied downloads are reported but never written to disk.
@@ -1610,6 +1617,7 @@ def parse_args(argv: list[str] | None = None) -> Config:
     parser.add_argument("--deadline", type=float, default=DEFAULT_DEADLINE_S, help="exit within this many seconds")
     parser.add_argument("--dwell", type=float, default=DEFAULT_DWELL_S, help="seconds to observe after load")
     parser.add_argument("--work-root", type=Path, default=Path("/tmp"), help="parent directory for the throwaway profile")
+    parser.add_argument("--chromium-sandbox", action="store_true", help="keep Chromium's own sandbox on (needs gVisor)")
     args = parser.parse_args(argv)
     if args.offline and args.fixture is None:
         parser.error("--offline requires --fixture")
@@ -1626,6 +1634,7 @@ def parse_args(argv: list[str] | None = None) -> Config:
         deadline_s=args.deadline,
         dwell_s=args.dwell,
         work_root=args.work_root,
+        chromium_sandbox=args.chromium_sandbox,
     )
 
 

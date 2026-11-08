@@ -41,6 +41,12 @@ class Settings:
     # The QR and email decoders parse attacker-supplied files with no network, so they can
     # run under gVisor even where the browser sandbox does not. Falls back to `runtime`.
     decoder_runtime: str | None = None
+    # Browser under gVisor: gVisor's own network stack cannot reach Docker's embedded DNS
+    # (127.0.0.11, a NAT redirect to a listener in the host kernel), so the container gets a
+    # read-only resolver file naming the same resolvers the firewall already allows.
+    sandbox_resolv_conf: str | None = None
+    # Keep Chromium's own sandbox on. Only works where user namespaces exist (gVisor).
+    chromium_sandbox: bool = False
     deadline_s: float = 60.0
     docker_command_timeout_s: float = 15.0
     secret_env_names: tuple[str, ...] = ("VULTR_API_KEY", LIVE_ACCESS_CODE_ENV)
@@ -109,11 +115,18 @@ class Settings:
         """Builds settings from LD_* variables. Raises ValueError on a malformed value."""
         source = os.environ if env is None else env
         defaults = cls()
+        runtime = _text(source, "LD_RUNTIME", "") or None
+        chromium_sandbox = _flag(source, "LD_CHROMIUM_SANDBOX", defaults.chromium_sandbox)
+        if chromium_sandbox and runtime != "runsc":
+            # Under runc Chromium's sandbox cannot start, so every scan would fail.
+            raise ValueError("LD_CHROMIUM_SANDBOX=1 needs LD_RUNTIME=runsc")
         return cls(
             docker_bin=_text(source, "LD_DOCKER_BIN", defaults.docker_bin),
             image=_text(source, "LD_IMAGE", defaults.image),
-            runtime=_text(source, "LD_RUNTIME", "") or None,
+            runtime=runtime,
             decoder_runtime=_text(source, "LD_DECODER_RUNTIME", "") or None,
+            sandbox_resolv_conf=_text(source, "LD_SANDBOX_RESOLV_CONF", "") or None,
+            chromium_sandbox=chromium_sandbox,
             deadline_s=_positive_float(source, "LD_DEADLINE_S", defaults.deadline_s),
             docker_command_timeout_s=_positive_float(
                 source, "LD_DOCKER_COMMAND_TIMEOUT_S", defaults.docker_command_timeout_s

@@ -87,10 +87,10 @@ Each finding links to its source event. A click scrolls the timeline to that eve
 
 | Part | Status |
 |---|---|
-| Sandbox and firewall | **Verified on the live VM:** `deploy/verify_sandbox.sh` passes 42 of 42 real checks, including the QR and email decoders running under gVisor with no network (latest run 2026-11-07). Raw output and what it does and does not prove: [docs/VERIFICATION.md](docs/VERIFICATION.md) |
+| Sandbox and firewall | **Verified on the live VM:** `deploy/verify_sandbox.sh` passes 44 of 44 real checks, including the browser running under gVisor with Chromium's own sandbox on, and the QR and email decoders running under gVisor with no network (latest run 2026-11-08). Raw output and what it does and does not prove: [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Deploy scripts | Run for real: `provision.sh` built this VM, and it refuses to start the app unless verification passes |
 | AI agent | Running on the VM with Vultr Serverless Inference. Real benchmark results: [reports/README.md](reports/README.md) |
-| Not verified | Resistance to Chromium or kernel exploits in the browser sandbox, which does not use gVisor yet. See "Security model" below |
+| Not verified | Resistance to a real exploit chain (Chromium, then gVisor, then the host kernel). The layers are verified to be in place, not to be unbreakable. See "Security model" below |
 
 ## Architecture
 
@@ -107,10 +107,15 @@ Each finding links to its source event. A click scrolls the timeline to that eve
       |      |  stdout only: hostile JSON lines, capped       |
       |      |  and validated                                 |
       |   +--v----------------------------------------+       |
-      |   | Sandbox container on bridge ld-br0        |       |
-      |   |  Playwright + Chromium, read-only rootfs, |       |
-      |   |  no capabilities, no mounts, no env,      |       |
-      |   |  CPU/memory/PID limits, 60 s deadline     |       |
+      |   | Sandbox container on bridge ld-br0,       |       |
+      |   | under gVisor (runsc): own user-space      |       |
+      |   | kernel between the page and the host      |       |
+      |   |  Playwright + Chromium, its own sandbox   |       |
+      |   |  on (seccomp, user namespace),            |       |
+      |   |  read-only rootfs, no capabilities, no    |       |
+      |   |  env, one read-only file mounted (the     |       |
+      |   |  pinned resolver list), CPU/memory/PID    |       |
+      |   |  limits, 60 s deadline                    |       |
       |   +--+----------------------------------------+       |
       |      |                                                |
       |   iptables, the real boundary:                        |
@@ -131,15 +136,19 @@ More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The engineering 
 **What it is designed to do**
 
 - Keep a scanned page away from cloud metadata, private networks and the VM's own services, using host firewall rules rather than URL checks.
-- Keep secrets out of the container. There are no `-e`, `--env-file` or mounts, and evidence leaves only through stdout.
+- Keep secrets out of the container. There is no `-e` or `--env-file`, and the only mount is one read-only file listing the two allowed DNS resolvers. Evidence leaves only through stdout.
+- Put two layers between page code and the host kernel: Chromium's own sandbox (seccomp filter and user namespace per renderer), then gVisor, which answers system calls in user space.
 - Treat everything the worker prints, and every string from a page, as hostile.
 - Claim containment only when events prove it. A row with no evidence says `not_observed`.
 
 **Honest limits**
 
-- **It is not malware-proof.** A container shares the VM's kernel, so a kernel or Docker escape would defeat it. A browser exploit is contained only as far as these layers hold.
-- **Chromium runs with `--no-sandbox`** inside the container. Its own sandbox needs privileges the container deliberately lacks, so the container is the boundary and there is no second layer within it.
-- **gVisor runs the file decoders, not yet the browser.** QR images and email files are parsed under gVisor (`LD_DECODER_RUNTIME=runsc`), so a parser exploit meets gVisor's user-space kernel, not the host's. The browser sandbox still uses the standard runtime: under gVisor its DNS lookups failed (gVisor's own network stack bypasses Docker's DNS redirect), and `--reproduce-nat` and `--reproduce-nftables` did not fix it in the time available. `provision.sh` installs gVisor from Google's signed repository.
+- **It is not escape-proof.** gVisor reduces how much of the host kernel a page can reach, but it is software with its own bugs, and it still runs on the host kernel. An attacker who breaks Chromium's sandbox, then gVisor, then the host, or who finds a Docker or runsc bug, defeats it. The layers raise the cost of an escape; they do not rule one out.
+- **Browser, QR and email decoders all run under gVisor.** The browser uses `LD_RUNTIME=runsc` and the decoders use `LD_DECODER_RUNTIME=runsc` with no network. gVisor's own network stack cannot reach Docker's embedded DNS (a NAT rule into the host's loopback), so the browser reads a pinned resolver file instead. That file names the same two resolvers the firewall allows, so DNS still crosses the same egress rules. It is not DNS-over-HTTPS. `provision.sh` installs gVisor from Google's signed repository and writes the file.
+- **Chromium's own sandbox is on only under gVisor** (`LD_CHROMIUM_SANDBOX=1`). Under the standard runtime it cannot start without privileges the container deliberately lacks, so a runc deployment runs Chromium with `--no-sandbox`, as earlier versions did.
+- **Limits end the whole sandbox under gVisor.** Exceeding the PID or memory limit stops the entire container instead of failing one call. The scan ends as partial, which is safe, and the verifier checks exactly that.
+- **gVisor makes each scan slower.** The overhead is not measured in a published benchmark run; the published benchmark (run 4) used the standard runtime.
+- **The sandbox can reach any public HTTPS server**, including public DNS-over-HTTPS resolvers. These resolve only public names, and private and metadata addresses stay blocked by IP at the firewall, whatever name led to them.
 - **The docker group is root-equivalent.** The `detonator` user needs it to start containers, so compromising the app means root on the VM. **This VM must hold nothing else**: no other services, data or credentials you would mind losing. Rebuild it rather than cleaning it.
 - **The sandbox can reach the public web.** Pages run for real, so a target learns the VM's IP and can receive anything the page sends. Detonating a link can tip off whoever sent it.
 - **DNS can leak data.** Lookups for attacker-chosen names reach the attacker's name server through the resolver.

@@ -26,14 +26,18 @@ This explains how the parts fit together and why. [CONTRACT.md](CONTRACT.md) hol
 
 ```
 Page JavaScript
-  Chromium renderer (--no-sandbox: its own sandbox is off)
-    Container: read-only rootfs, noexec /tmp, no capabilities, non-root,
-               no-new-privileges, CPU/memory/PID limits, no mounts, no env
-      Firewall: INPUT and DOCKER-USER rules on ld-br0
-        VM: disposable, holds nothing else
+  Chromium renderer: its own sandbox on (seccomp-BPF filter, user namespace)
+    gVisor (runsc): system calls answered by a user-space kernel, own network stack
+      Container: read-only rootfs, noexec /tmp, no capabilities, non-root,
+                 no-new-privileges, CPU/memory/PID limits, no env,
+                 one read-only file mounted (/etc/resolv.conf)
+        Firewall: INPUT and DOCKER-USER rules on ld-br0
+          VM: disposable, holds nothing else
 ```
 
-A browser exploit lands in the container. A kernel exploit lands on the VM, which is why the VM must be disposable.
+A renderer exploit lands in Chromium's sandbox. Escaping it reaches gVisor's user-space kernel, not the host's. A gVisor escape, or a bug in Docker or runsc, lands on the VM, which is why the VM must still be disposable. These layers raise the cost of an escape; none of them is proof against one.
+
+The browser layers above apply with `LD_RUNTIME=runsc` and `LD_CHROMIUM_SANDBOX=1`, the live configuration. With the standard runtime, Chromium's sandbox cannot start (it needs privileges the container lacks), so Chromium runs with `--no-sandbox` and the container shares the host kernel.
 
 ## Network policy
 
@@ -61,6 +65,8 @@ With a silent drop, Chromium keeps retrying the connection. On Linux defaults th
 
 **2. DNS is allowed to two pinned resolvers.**
 The contract allows TCP 80/443 and drops everything else, yet also requires "DNS works". Those conflict. Docker's embedded resolver dials non-loopback upstream servers from inside the container's network namespace (`dialExtDNS` in moby's `resolver.go`, and the `--dns` documentation). Those queries pass through `DOCKER-USER`, where the contract's rules would drop them. So `provision.sh` pins resolvers in `/etc/docker/daemon.json`, and the firewall allows port 53 to those addresses only. They are `1.1.1.1` and `8.8.8.8`, chosen because a resolver that filters known-bad domains would hide what a scan is meant to see.
+
+**2a. Under gVisor the browser reads a pinned resolver file.** Docker's embedded DNS answers at `127.0.0.11` through a NAT rule inside the container's network namespace, to a listener on that namespace's loopback in the host kernel. gVisor runs its own network stack, with its own loopback, so the redirected queries never arrive and every lookup fails. (`--reproduce-nat` and `--reproduce-nftables` did not change this.) Queries straight to `1.1.1.1:53` work under gVisor and cross the same `DOCKER-USER` rules. So `LD_SANDBOX_RESOLV_CONF` names a root-owned file, written by `provision.sh` from `LD_SANDBOX_DNS`, that `docker run` mounts read-only at `/etc/resolv.conf`. It lists the two resolvers the firewall allows, so nothing is bypassed. DNS-over-HTTPS was rejected because it would move DNS outside the port-53 rules. The path is checked against a strict pattern before it reaches the argv.
 
 **3. Rules live in their own chains.** `iptables-restore --noflush` replaces each chain in one transaction, so a re-run never leaves it empty or partial.
 

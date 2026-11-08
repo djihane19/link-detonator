@@ -21,11 +21,12 @@ Status as of 2026-11-03, after the first agent build. "Verified" means run here 
 ## Missing
 - ~~Any run of the real model~~ Done 2026-11-06: three real benchmark runs on the VM; see `reports/README.md`.
 - ~~Any run on a VM~~ Done 2026-11-05: all 40 sandbox checks pass on the VM, and the app is live behind Caddy. See the engineering log.
-- gVisor evaluation, slides, final video, and rollback documentation.
+- ~~gVisor evaluation~~ Done 2026-11-08: the browser runs under gVisor with Chromium's own sandbox on; see VERIFICATION.md and `docs/evidence/browser-gvisor/`. Rollback is documented in VERIFICATION.md. Final video still to do.
 
 ## Insecure or questionable by design
 - **Docker access:** the app user is in the `docker` group, which is root-equivalent on the VM. Mitigation: the VM holds nothing else. A compromised app means a compromised VM.
-- **Chromium `--no-sandbox`:** the container is the only boundary unless gVisor is added. A Chromium exploit plus a kernel exploit is out of scope for this design.
+- **Browser isolation:** under gVisor with Chromium's own sandbox on, an escape needs a Chromium sandbox escape, then a gVisor escape (or a Docker or runsc bug), then whatever the VM allows. Each is possible in principle; the design makes the chain longer, not impossible. If `LD_RUNTIME` is unset, Chromium falls back to `--no-sandbox` on the shared host kernel.
+- **One mount:** the browser sandbox gets one read-only bind mount, the resolver file. It is root-owned, holds only two resolver addresses and is validated before use.
 - **Hidden-text patterns:** they catch known wording only. A paraphrase can pass, and the model is the only other layer.
 - **Model output in the planted-secret test:** a leak means the model repeated it. The value is random and useless, and real keys never enter the prompt or sandbox.
 - **Follow-up sandboxes** run outside the scan concurrency limit, bounded at two per scan.

@@ -58,6 +58,15 @@ create_user_and_dirs() {
   # Existing files are kept as they are, since they may hold secrets added later.
   grep -q '^LD_TRUST_PROXY=' "$LD_ENV_FILE" || printf 'LD_TRUST_PROXY=1\n' >>"$LD_ENV_FILE"
   sed -i 's/^LD_TRUST_PROXY=.*/LD_TRUST_PROXY=1/' "$LD_ENV_FILE"
+  # With gVisor installed, the browser and the decoders run under it, and Chromium keeps
+  # its own sandbox. Only missing keys are added, so an operator's explicit choice stays.
+  if command -v runsc >/dev/null 2>&1; then
+    local key
+    for key in LD_RUNTIME=runsc LD_DECODER_RUNTIME=runsc \
+      "LD_SANDBOX_RESOLV_CONF=$(dirname "$LD_ENV_FILE")/sandbox-resolv.conf" LD_CHROMIUM_SANDBOX=1; do
+      grep -q "^${key%%=*}=" "$LD_ENV_FILE" || printf '%s\n' "$key" >>"$LD_ENV_FILE"
+    done
+  fi
 }
 
 # Docker's embedded resolver dials its upstream from inside the container's network
@@ -97,6 +106,28 @@ configure_docker() {
     systemctl restart docker.service
   else
     systemctl enable --now docker.service
+  fi
+}
+
+# gVisor's own network stack cannot reach Docker's embedded DNS (a NAT rule into the host
+# network namespace's loopback), so a browser under runsc reads this file instead. It
+# names the same resolvers firewall.sh allows, so DNS still crosses the egress rules. It is
+# bind-mounted read-only only when LD_SANDBOX_RESOLV_CONF points at it.
+write_sandbox_resolver() {
+  local file resolver desired
+  file="$(dirname "$LD_ENV_FILE")/sandbox-resolv.conf"
+  desired="# Pinned resolvers for the browser sandbox under gVisor. Must match the DNS servers
+# the firewall allows (LD_SANDBOX_DNS). Mounted read-only at /etc/resolv.conf."
+  for resolver in $LD_SANDBOX_DNS; do
+    desired=$(printf '%s\nnameserver %s' "$desired" "$resolver")
+  done
+  desired=$(printf '%s\noptions timeout:2 attempts:2' "$desired")
+  if [[ ! -f "$file" || "$(cat "$file")" != "$desired" ]]; then
+    printf '%s\n' "$desired" >"$file.tmp"
+    chown root:root "$file.tmp"
+    chmod 644 "$file.tmp"
+    mv "$file.tmp" "$file"
+    log "wrote $file"
   fi
 }
 
@@ -175,6 +206,7 @@ main() {
   install_gvisor
   create_user_and_dirs
   configure_docker
+  write_sandbox_resolver
   install_app_venv
   configure_ufw
   install_units

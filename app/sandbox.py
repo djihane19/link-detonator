@@ -192,7 +192,34 @@ def build_docker_argv(
     ]  # fmt: skip
     if settings.runtime:
         argv += ["--runtime", settings.runtime]
+    argv += resolver_mount_args(settings)
     return [*argv, image, "python", "/worker/worker.py", *target_args]
+
+
+_RESOLV_PATH = re.compile(r"^/[A-Za-z0-9_./-]+$")
+
+
+def resolver_mount_args(settings: Settings) -> list[str]:
+    """The one mount a browser sandbox may have: a read-only resolver file.
+
+    Only for gVisor, whose network stack cannot reach Docker's embedded DNS. The file names
+    the resolvers the firewall already allows, so DNS still crosses the same egress rules.
+    """
+    path = settings.sandbox_resolv_conf
+    if not path:
+        return []
+    if not _RESOLV_PATH.fullmatch(path) or ".." in path.split("/"):
+        raise ValueError("invalid resolver file path")
+    return ["--mount", f"type=bind,source={path},target=/etc/resolv.conf,readonly"]
+
+
+def browser_policy(settings: Settings) -> dict[str, Any]:
+    """What the host asked for, recorded with each scan."""
+    return {
+        **SANDBOX_POLICY,
+        "chromium_sandbox": settings.chromium_sandbox,
+        "resolver": "pinned read-only file" if settings.sandbox_resolv_conf else "docker embedded",
+    }
 
 
 def build_local_argv(fixture: str, settings: Settings) -> list[str]:
@@ -593,7 +620,9 @@ class _DockerScan:
         self._canary = canary
         self._name = container_name(scan_id)
         self._argv = build_docker_argv(
-            self._name, settings.image, [*worker_args(target), *worker_deadline_args(settings)], settings
+            self._name, settings.image,
+            [*worker_args(target), *worker_deadline_args(settings), *(["--chromium-sandbox"] if settings.chromium_sandbox else [])],
+            settings,
         )
         self._client = _DockerClient(settings)
         self._oom = _OomWatcher(settings, self._client, self._name)
@@ -690,7 +719,7 @@ class _DockerScan:
                 "name": self._name,
                 "image": self._settings.image,
                 "runtime": runtime if isinstance(runtime, str) else self._settings.runtime,
-                "policy": dict(SANDBOX_POLICY),
+                "policy": browser_policy(self._settings),
             },
             "host",
         )

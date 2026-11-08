@@ -23,6 +23,9 @@ IMAGE="${IMAGE:-link-detonator-worker:latest}"
 RUNTIME="${LD_RUNTIME:-$(env_file_value LD_RUNTIME)}"
 # The QR and email decoders may use a different runtime (gVisor) from the browser sandbox.
 DECODER_RUNTIME="${LD_DECODER_RUNTIME:-$(env_file_value LD_DECODER_RUNTIME)}"
+# Browser under gVisor: the pinned resolver file and Chromium's own sandbox (see app/config.py).
+RESOLV_CONF="${LD_SANDBOX_RESOLV_CONF:-$(env_file_value LD_SANDBOX_RESOLV_CONF)}"
+CHROMIUM_SANDBOX="${LD_CHROMIUM_SANDBOX:-$(env_file_value LD_CHROMIUM_SANDBOX)}"
 PROBE_SOURCE=$(cat "$SCRIPT_DIR/sandbox_probe.py")
 
 # Checks the contract requires. Each must report at least once, or it counts as a FAIL;
@@ -74,7 +77,14 @@ sandbox_run() {
   if [[ -n "$RUNTIME" ]]; then
     flags+=(--runtime "$RUNTIME")
   fi
+  if [[ -n "$RESOLV_CONF" ]]; then
+    flags+=(--mount "type=bind,source=$RESOLV_CONF,target=/etc/resolv.conf,readonly")
+  fi
   docker run "${flags[@]}" "$@"
+}
+
+chromium_flag() {
+  [[ "$CHROMIUM_SANDBOX" == "1" || "$CHROMIUM_SANDBOX" == "true" ]] && printf -- '--chromium-sandbox'
 }
 
 # Runs one probe command in its own container and reports each line it prints.
@@ -182,12 +192,14 @@ check_running_container() {
   fi
   check_secrets_absent "$long_running"
 
-  local mounts
-  mounts=$(docker inspect --format '{{len .Mounts}}' "$long_running")
-  if [[ "$mounts" == "0" ]]; then
-    report PASS "no mounts" "container has 0 mounts"
+  # Allowed: nothing, or exactly the configured resolver file, read-only, at /etc/resolv.conf.
+  local mounts expected=""
+  mounts=$(docker inspect --format '{{range .Mounts}}{{.Source}}>{{.Destination}}>{{.RW}};{{end}}' "$long_running")
+  [[ -n "$RESOLV_CONF" ]] && expected="$RESOLV_CONF>/etc/resolv.conf>false;"
+  if [[ "$mounts" == "$expected" ]]; then
+    report PASS "no mounts" "${expected:+only the read-only resolver file }(${mounts:-0 mounts})"
   else
-    report FAIL "no mounts" "container has $mounts mount(s)"
+    report FAIL "no mounts" "unexpected mounts: ${mounts:-none} (expected ${expected:-none})"
   fi
   check_docker_kill "$long_running"
   docker rm -f "$long_running" >/dev/null 2>&1 || true
@@ -217,6 +229,60 @@ check_docker_kill() {
     report PASS "docker kill stops the sandbox" "not running $((attempt * 100)) ms after docker kill"
   else
     report FAIL "docker kill stops the sandbox" "still running 3 s after docker kill"
+  fi
+}
+
+# gVisor ends the whole sandbox at its limits instead of returning EAGAIN or killing one
+# process, so its pid and memory limits are judged from host facts: the container must end
+# before passing the limit, never reach it unrefused, and (for memory) be OOM-killed.
+check_gvisor_limits() {
+  local name output code oom last limit
+  next_container_name; name=$container_name
+  output=$(sandbox_run "$name" "$IMAGE" python -u -c '
+import os, time
+for n in range(1, 400):
+    if os.fork() == 0:
+        time.sleep(30); os._exit(0)
+    print(n, flush=True)
+print("NEVER-REFUSED", flush=True)' 2>/dev/null) && code=0 || code=$?
+  last=$(printf '%s\n' "$output" | grep -E '^[0-9]+$' | tail -1)
+  if [[ "$output" != *NEVER-REFUSED* && "$code" -ne 0 && -n "$last" && "$last" -lt 256 ]]; then
+    report PASS "pid limit" "gVisor sandbox ended after $last guest processes (pids-limit 256, exit $code)"
+  else
+    report FAIL "pid limit" "exit $code after ${last:-0} processes, never refused: $([[ "$output" == *NEVER-REFUSED* ]] && echo yes || echo no)"
+  fi
+  next_container_name; name=$container_name
+  local -a flags=(
+    --init --name "$name" --label link-detonator=1 --network "$LD_SANDBOX_NETWORK"
+    --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=256m --cap-drop ALL --security-opt no-new-privileges
+    --pids-limit 256 --memory 1g --memory-swap 1g --cpus 1 --user pwuser --runtime "$RUNTIME"
+  )
+  long_running=$name
+  output=$(docker run "${flags[@]}" "$IMAGE" python -u -c '
+blocks = []
+for n in range(1, 64):
+    block = bytearray(32 * 1024 * 1024); block[::4096] = b"\x01" * len(range(0, len(block), 4096)); blocks.append(block)
+    print(n * 32, flush=True)
+print("NOT-KILLED", flush=True)' 2>/dev/null) && code=0 || code=$?
+  oom=$(docker inspect --format '{{.State.OOMKilled}}' "$name" 2>/dev/null || echo unknown)
+  limit=$(docker inspect --format '{{.HostConfig.Memory}}' "$name" 2>/dev/null || echo unknown)
+  docker rm -f "$name" >/dev/null 2>&1 || true; long_running=""
+  last=$(printf '%s\n' "$output" | grep -E '^[0-9]+$' | tail -1)
+  if [[ "$oom" == "true" && "$output" != *NOT-KILLED* && -n "$last" && "$last" -le 1024 && "$limit" == "1073741824" ]]; then
+    report PASS "memory limit" "gVisor sandbox OOM-killed by the host after ${last} MiB (memory limit $limit, exit $code)"
+  else
+    report FAIL "memory limit" "OOMKilled=$oom, reached ${last:-0} MiB, limit $limit, exit $code"
+  fi
+}
+
+check_browser_runtime() {
+  local kernel
+  next_container_name
+  kernel=$(sandbox_run "$container_name" "$IMAGE" python -c 'import platform; print(platform.release())' 2>/dev/null || true)
+  if [[ "$kernel" == *gvisor* ]]; then
+    report PASS "browser runs under gVisor" "kernel seen inside: $kernel"
+  else
+    report FAIL "browser runs under gVisor" "kernel seen inside: ${kernel:-none}"
   fi
 }
 
@@ -265,7 +331,7 @@ run_worker_check() {
   local check=$1 status check_name detail output
   shift
   next_container_name
-  output=$(sandbox_run "$container_name" "$IMAGE" python /worker/worker.py "$@" --deadline 40 2>/dev/null || true)
+  output=$(sandbox_run "$container_name" "$IMAGE" python /worker/worker.py "$@" --deadline 40 $(chromium_flag) 2>/dev/null || true)
   while IFS=$'\t' read -r status check_name detail; do
     case "$status" in
       PASS | FAIL) report "$status" "$check_name" "$detail" ;;
@@ -312,8 +378,16 @@ main() {
 
   run_probe filesystem
   run_probe identity
-  run_probe pids
-  run_probe memory
+  if [[ "$RUNTIME" == "runsc" ]]; then
+    check_browser_runtime
+    check_gvisor_limits
+    if [[ -n "$(chromium_flag)" ]]; then
+      run_probe chromium-sandbox "https://$VERIFY_HOST/"
+    fi
+  else
+    run_probe pids
+    run_probe memory
+  fi
   check_running_container
   check_decoder_sandbox
   check_required_reported

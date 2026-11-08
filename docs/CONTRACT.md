@@ -83,12 +83,15 @@ docker run --rm --init --name ld-<id> --label link-detonator=1 --network ld-sand
   --pids-limit 256 --memory 1g --memory-swap 1g --cpus 1 --shm-size 128m
   --ulimit nofile=1024:1024 --log-driver none --user pwuser
   [--runtime <LD_RUNTIME> if set]
+  [--mount type=bind,source=<LD_SANDBOX_RESOLV_CONF>,target=/etc/resolv.conf,readonly if set]
   <image> python /worker/worker.py <args>
 ```
 
-`<args>` is the target (`--url X` or `--fixture X`) plus `--deadline`, set to 75% of `LD_DEADLINE_S` (bounded to 5-300 s) so `worker_finished` arrives before the host's kill.
+`<args>` is the target (`--url X` or `--fixture X`) plus `--deadline`, set to 75% of `LD_DEADLINE_S` (bounded to 5-300 s) so `worker_finished` arrives before the host's kill, plus `--chromium-sandbox` when `LD_CHROMIUM_SANDBOX=1`.
 
-No `-e`, `--env-file`, `-v`, `--mount`, `--privileged`, `--pid`, `--ipc=host` or `--network host`, ever. Evidence leaves only through stdout. Use `asyncio.create_subprocess_exec` with an argv list, never a shell. Chromium runs with `--no-sandbox` because the container is the boundary; say so in the docs. Its profile lives in `/tmp`.
+No `-e`, `--env-file`, `-v`, `--privileged`, `--pid`, `--ipc=host` or `--network host`, ever. The one permitted `--mount` is the read-only resolver file above, needed under gVisor (see ARCHITECTURE.md, decision 2a); its path must match `^/[A-Za-z0-9_./-]+$` with no `..`, and no other mount is allowed. With the default settings the argv is exactly the earlier one, with no mount. Evidence leaves only through stdout. Use `asyncio.create_subprocess_exec` with an argv list, never a shell. Chromium keeps its own sandbox only with `LD_CHROMIUM_SANDBOX=1`, which needs `LD_RUNTIME=runsc`; otherwise it runs with `--no-sandbox` and the container is the boundary; say so in the docs. Its profile lives in `/tmp`.
+
+Changed 2026-11-08 from "no `--mount`, ever", to run the browser under gVisor (branch `feat/browser-gvisor`).
 
 Lifecycle: the host enforces the deadline (default 60 s) with `docker kill`, always runs `docker rm -f` in `finally`, then verifies removal. On startup a reaper removes containers labelled `link-detonator=1`.
 
