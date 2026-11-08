@@ -20,7 +20,7 @@ Link Detonator is an AI security agent for a problem most link scanners ignore: 
 
 **Evidence over claims.** The report separates what the page attempted, what the rules denied and what the sandbox contained. A row says "contained" only when host-recorded events prove it, and never in an unsandboxed development mode. On the live VM, 44 of 44 sandbox and firewall checks pass, including the browser running under gVisor with Chromium's own sandbox on, and the file decoders under gVisor with no network. Blocked checks require the firewall rule's packet counter to rise, and the raw output is published.
 
-**Measured.** An adversarial benchmark of 14 controlled pages (11 attacks, 3 safe lookalikes), run with the real model in the real sandbox: 11/11 attacks detected, 0/3 false alarms, every unauthorized agent action blocked, no planted-secret leaks. We publish all four runs, including the two that each missed one case, and what we changed.
+**Measured.** An adversarial benchmark of 14 controlled pages (11 attacks, 3 safe lookalikes), run with the real model in the real sandbox: 11/11 attacks detected, 0/3 false alarms, every unauthorized agent action blocked, no planted-secret leaks. We publish all four runs, including the two that each missed one case, and what we changed. These runs used the standard runtime, before the browser moved to gVisor; the model varies between runs.
 
 **Why it matters.** We ran the same 14 pages through the same model without our layers: raw page text, a plain prompt, no rule engine. In each of three runs it called 1 to 2 of the 11 attacks safe, including a page that simply instructed it to. With Link Detonator: 0 of 11.
 
