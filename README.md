@@ -50,6 +50,39 @@ Each link and QR payload is classified with the same rules as QR codes, and the 
 
 **Limits:** files only, at most 5 MB, 200 MIME parts, 10 levels of nesting, 50 links and 30 attachments; anything past that is cut off and the page says so. There is no live mailbox or forwarding address yet, which needs a domain with its own mail setup. No AI reads the email itself yet: the agent only sees the page a link leads to. Links in HTML text that are not real links are not listed. Header checks are only what the email claims, and a sender can forge them.
 
+## Evidence receipts
+
+Every finished scan can be downloaded as a JSON receipt (report page, "Evidence receipt"). It holds the scan's recorded events in canonical JSON (sorted keys, no whitespace, ASCII), a SHA-256 hash chain across them, SHA-256 hashes of the stored screenshots, and a final digest. The report page shows that digest.
+
+Check one offline with the standard library only:
+
+```sh
+python3 tools/verify_receipt.py receipt.json --digest <digest you saved earlier> [--screenshots <folder of <seq>.jpg>]
+```
+
+**Trust model:**
+
+- **Where the digest lives:** nowhere. The server recomputes it on every request from the scan's event log and screenshot files on the VM. It is identical across requests and restarts (tested), and changes if the stored log is edited (tested).
+- **Independently controlled?** No. The report page shows a digest computed by the same server that holds the record. Whoever controls that server can alter the log, and the page and receipt would then show a new, consistent digest.
+- **What it does protect:** a copy of the digest or receipt saved outside the server, for example in a ticket or email when the scan finished, exposes any later change to the server's record: events, their order, the scan record or screenshots.
+- **What it does not protect:** changes made before you saved a copy, a compromised server lying about the record, and authorship. The chain is not a signature, and no signing key is used. Anyone can recompute a whole chain over altered events. Tests in `tests/test_receipt.py` cover modification, deletion, reordering, insertion and a fully recomputed forgery, which only the independent digest catches.
+
+## Investigation progress
+
+The report shows four stages, each driven by recorded events with no timers: Sandbox (`sandbox_created` from the host), Evidence (`worker_finished` or `sandbox_exit`), Containment verified (`sandbox_removed` with `verified: true`), and AI analysis (the `verdict` event). They appear in the order they really happen: the container is destroyed and checked before the model is called. In a dev run, stages that did not happen say so instead of showing success. The verdict also gets a plain-language line, for example "No malicious indicators observed in this scan. That is not a guarantee."
+
+## AI manipulation analysis
+
+Each report with a verdict has a card summarising how the page tried to influence the AI, built only from checks already recorded in the verdict: hidden-text attack patterns, the model's own injection report, actions the model proposed and the rule engine's decisions, the with-and-without-hidden-text comparison, and the planted-secret check. Every finding is labelled by outcome, so an attempt is never shown as a success:
+
+- **Attempted:** hidden text matching an attack pattern.
+- **Observed:** visible text that matches a pattern, which can be legitimate.
+- **Denied by rules** and **Allowed by rules:** what the rule engine did with a proposal.
+- **Resisted:** the check ran and the model was not moved.
+- **Succeeded** or **Succeeded in part:** a planted secret appeared in model output, or hidden text made the model judge the page safer.
+
+Each finding links to its source event. A click scrolls the timeline to that event and keeps it marked, as the Blast Radius evidence numbers also do. The card reports "no successful compromise" only when none of these checks recorded one, and it covers only these checks, not every possible effect on the model.
+
 ## Verification status
 
 | Part | Status |

@@ -13,6 +13,7 @@ Finished scans are read back from disk on demand.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import base64
 import binascii
 import json
@@ -34,6 +35,7 @@ from app.blast_radius import compute_blast_radius
 from app.config import Settings
 from app.models import ENVELOPE_VERSION, HOST_EVENT_TYPES, WORKER_EVENT_CAPS, ScanTarget
 from app.sandbox import SandboxRunner
+from app.receipt import build_receipt
 from app.verdict import PendingVerdictEngine, VerdictEngine
 
 logger = logging.getLogger(__name__)
@@ -256,6 +258,30 @@ class ScanManager:
 
     def load_stats(self) -> dict[str, int]:
         return {"queued": self._queue.qsize(), "running": self._running}
+
+    async def receipt(self, scan_id: str) -> dict[str, Any] | None:
+        """A hash-chained receipt of a finished scan's recorded events and screenshots."""
+        scan = self.get(scan_id)
+        if scan is None or not scan.is_final:
+            return None
+        events = await self._events_of(scan)
+        record = {"scan_id": scan.id, "target": scan.target.model_dump(), "runner": scan.runner,
+                  "created_at": scan.created_at, "status": scan.status}
+        directory = self._scan_dir(scan.id)
+
+        def screenshot_hashes() -> list[dict[str, Any]]:
+            found = []
+            for event in events:
+                if event.get("type") == "screenshot" and (event.get("data") or {}).get("image_url"):
+                    try:
+                        content = (directory / f"{int(event['seq'])}.jpg").read_bytes()
+                    except (OSError, ValueError):
+                        continue
+                    found.append({"seq": int(event["seq"]), "sha256": hashlib.sha256(content).hexdigest()})
+            return found
+
+        artifacts = await asyncio.to_thread(screenshot_hashes)
+        return build_receipt(record, events, artifacts)
 
     async def snapshot(self, scan_id: str) -> dict[str, Any] | None:
         scan = self.get(scan_id)

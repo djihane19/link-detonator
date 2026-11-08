@@ -1368,3 +1368,53 @@ body[data-runner="dev"] .dev-only { display: block; }
 .email-attachment[data-risky="yes"] { border-left-color: var(--failed); }
 .email-attachment strong, .email-hash { overflow-wrap: anywhere; }
 .email-hash { color: var(--faint); font-size: 0.85em; }
+
+/* Investigation progress, driven by recorded events */
+.pipeline { list-style: none; padding: 0; margin: 18px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; counter-reset: stage; }
+.pipeline li { counter-increment: stage; border: 1px solid var(--line); background: var(--soot); padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.pipeline li::before { content: "0" counter(stage); font-family: var(--font-stencil); color: var(--faint); font-size: 1rem; }
+.stage-name { font-family: var(--font-stencil); text-transform: uppercase; letter-spacing: 0.04em; font-size: 1.05rem; }
+.stage-detail { font-size: 0.78rem; color: var(--dust); }
+.pipeline li[data-state="active"] { border-color: var(--tape); }
+.pipeline li[data-state="active"]::before { color: var(--tape); }
+.pipeline li[data-state="done"] { border-color: var(--contained); }
+.pipeline li[data-state="done"]::before, .pipeline li[data-state="done"] .stage-name { color: var(--contained); }
+.pipeline li[data-state="failed"] { border-color: var(--failed); }
+.pipeline li[data-state="failed"] .stage-name { color: var(--failed); }
+.pipeline li[data-state="skipped"] { border-style: dashed; }
+@media (prefers-reduced-motion: no-preference) { .pipeline li[data-state="active"] { animation: stage-pulse 1.6s ease-in-out infinite; } }
+@keyframes stage-pulse { 50% { border-color: var(--line); } }
+@media (max-width: 640px) { .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.verdict-plain { grid-column: 1 / -1; margin: 6px 0 2px; font-size: 1.05rem; font-weight: 700; color: var(--bone); }
+.verdict[data-status="malicious"] .verdict-plain { color: var(--failed); }
+.verdict[data-status="suspicious"] .verdict-plain { color: var(--observed); }
+.verdict[data-status="benign"] .verdict-plain { color: var(--contained); }
+
+/* Benchmark method and reproduction */
+.bench-method { display: grid; gap: 12px; max-width: 90ch; }
+.bench-method code { color: var(--bone); }
+.bench-subhead { font-family: var(--font-stencil); text-transform: uppercase; letter-spacing: 0.05em; font-size: 1.1rem; margin: 10px 0 0; }
+.bench-links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; }
+.bench-code { background: var(--soot); border: 1px solid var(--line); padding: 12px 14px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 0; max-width: 100%; }
+.bench-lede strong { color: var(--tape); }
+
+.receipt-digest { overflow-wrap: anywhere; font-size: 0.75rem; }
+
+/* AI manipulation analysis */
+.manipulation { border: 1px solid var(--line); background: var(--soot); padding: 18px 20px; margin: 18px 0; display: grid; gap: 8px; }
+.manipulation-summary { margin: 0; font-weight: 700; }
+.manipulation[data-compromised="true"] .manipulation-summary { color: var(--failed); }
+.manipulation-findings { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.manipulation-finding { display: grid; grid-template-columns: minmax(130px, max-content) minmax(0, 1fr); gap: 2px 14px; border-left: 3px solid var(--line); padding-left: 10px; }
+.manipulation-finding .row-evidence { grid-column: 2; font-size: 0.8rem; color: var(--dust); }
+.manipulation-outcome { text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.06em; }
+.manipulation-text { overflow-wrap: anywhere; }
+.manipulation-finding[data-outcome="attempted"] { border-left-color: var(--observed); }
+.manipulation-finding[data-outcome="attempted"] .manipulation-outcome { color: var(--observed); }
+.manipulation-finding[data-outcome="denied"], .manipulation-finding[data-outcome="resisted"], .manipulation-finding[data-outcome="detected"] { border-left-color: var(--contained); }
+.manipulation-finding[data-outcome="denied"] .manipulation-outcome, .manipulation-finding[data-outcome="resisted"] .manipulation-outcome, .manipulation-finding[data-outcome="detected"] .manipulation-outcome { color: var(--contained); }
+.manipulation-finding[data-outcome="succeeded"], .manipulation-finding[data-outcome="partial"] { border-left-color: var(--failed); }
+.manipulation-finding[data-outcome="succeeded"] .manipulation-outcome, .manipulation-finding[data-outcome="partial"] .manipulation-outcome { color: var(--failed); }
+@media (max-width: 560px) { .manipulation-finding { grid-template-columns: minmax(0, 1fr); } .manipulation-finding .row-evidence { grid-column: 1; } }
+/* The timeline event a jump landed on stays marked until the next jump. */
+.tl.is-current, .tl-subitem.is-current { outline: 2px solid var(--tape); outline-offset: 2px; background: rgb(247 198 0 / 0.08); }

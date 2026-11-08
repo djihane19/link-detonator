@@ -6,6 +6,7 @@ import asyncio
 import hmac
 import ipaddress
 import json
+import re
 import logging
 from collections import Counter
 from collections.abc import AsyncIterator, Callable
@@ -23,6 +24,7 @@ from app.config import PROJECT_ROOT, Settings
 from app.agent.engine import build_engine
 from app import email_intake
 from app import qr as qr_input
+from app import receipt as evidence_receipt
 from app.models import FIXTURE_NAMES, ScanAccepted, ScanRequest, ScanTarget
 from app.ratelimit import DAY_S, RateDecision, SlidingWindowLimiter, client_key
 from app.sandbox import SandboxRunner, build_runner, is_loopback_host
@@ -66,6 +68,7 @@ MAX_LOOKUPS_PER_CLIENT = 2
 READ_HOUR_FACTOR = 30
 GLOBAL_BUDGET_KEY = "global"
 RUNNER_MARKER = 'data-runner="unknown"'
+DEV_ONLY_BLOCK = re.compile(r"[ \t]*<!-- dev-only -->.*?<!-- /dev-only -->\n?", re.S)
 
 FIXTURE_CATALOG: dict[str, dict[str, str]] = {
     "lab-direct-injection": {
@@ -603,6 +606,26 @@ def _register_api(
             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
         )
 
+    @app.get("/api/scans/{scan_id}/receipt.json")
+    async def scan_receipt(scan_id: str, request: Request) -> Response:
+        """The finished scan's events, hash-chained. Tamper-evident, not a signature."""
+        refused = read_refusal(request)
+        if refused is not None:
+            return refused
+        scan = manager.get(scan_id)
+        if scan is None:
+            return _refusal(404, "No such scan.")
+        if not scan.is_final:
+            return _refusal(409, "The receipt is available once the scan has finished.")
+        receipt = await manager.receipt(scan_id)
+        if receipt is None:
+            return _refusal(404, "No such scan.")
+        body = evidence_receipt.canonical(receipt)
+        return Response(body, media_type="application/json", headers={
+            "Content-Disposition": f'attachment; filename="link-detonator-{scan_id}-receipt.json"',
+            "X-Content-Type-Options": "nosniff",
+        })
+
     @app.get("/api/scans/{scan_id}/screenshots/{name}")
     async def get_screenshot(scan_id: str, name: str, request: Request) -> Response:
         refused = read_refusal(request)
@@ -777,6 +800,10 @@ def _load_page(name: str, dev_runner: bool) -> str:
     html = (STATIC_DIR / name).read_text(encoding="utf-8")
     # Set server-side so the warning does not depend on any later request succeeding.
     runner = "dev" if dev_runner else "sandbox"
+    if not dev_runner:
+        # Dev-only notes describe a local, unsandboxed run. A deployed page must not
+        # carry them at all, not even hidden, so its source matches what is true.
+        html = DEV_ONLY_BLOCK.sub("", html)
     return html.replace(RUNNER_MARKER, f'data-runner="{runner}"', 1)
 
 

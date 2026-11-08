@@ -10,10 +10,12 @@
   <script src="/static/app.js" defer></script>
 </head>
 <body data-page="benchmark" data-runner="unknown">
+  <!-- dev-only -->
   <div class="dev-banner" role="note">
     <strong>DEV: NOT SANDBOXED</strong>
     <span>This server runs without a sandbox. The published results below came from the VM.</span>
   </div>
+  <!-- /dev-only -->
   <div class="tape" aria-hidden="true"></div>
   <header class="report-head">
     <a class="brand" href="/" aria-label="Link Detonator home">
@@ -32,7 +34,7 @@
     <section aria-labelledby="bench-title">
       <p class="eyebrow">Adversarial benchmark</p>
       <h1 id="bench-title" class="bench-title">Attacks against the agent, measured</h1>
-      <p class="bench-lede">Every case is a controlled page built to attack an AI agent, or a safe page that looks like one. Each ran through the real browser sandbox, firewall, policy gate and model. Nothing here is hand-scored: pass or fail comes from the recorded verdict.</p>
+      <p class="bench-lede"><strong>In short:</strong> without our layers, the same model called attack pages safe in every run; with them, it did not. Every case is a controlled page built to attack an AI agent, or a safe page that looks like one. Each ran through the real browser sandbox, firewall, policy gate and model. Nothing here is hand-scored: pass or fail comes from the recorded verdict.</p>
       <p id="bench-meta" class="hint">Loading the published run.</p>
     </section>
 
@@ -64,6 +66,43 @@
           </thead>
           <tbody id="bench-cases"></tbody>
         </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="bench-method-title">
+      <h2 id="bench-method-title" class="section-label">How this is measured</h2>
+      <div class="bench-method">
+        <ul class="bench-limits">
+          <li><strong>Cases:</strong> 14 controlled pages written for this test: 11 attacks on the agent (direct and hidden prompt injection, credential harvesting, local-file and internal-service requests, self-navigation, malicious redirect, suspicious download, prompt disclosure, a composite) and 3 safe pages that look like attacks. Definitions: <code>benchmarks/cases.json</code>.</li>
+          <li><strong>Run:</strong> each page is opened in the real sandbox on the Vultr VM, behind the real firewall, and judged by the real model on Vultr Serverless Inference. Nothing is replayed or mocked.</li>
+          <li><strong>Scoring:</strong> pass or fail comes from the recorded verdict and policy decisions, by fixed rules in <code>benchmarks/run.py</code>. No case is scored by hand, and no case or result was changed for presentation.</li>
+          <li><strong>Baseline:</strong> the same pages, captured the same way, sent to the same model as raw text with a plain prompt and none of Link Detonator's layers (<code>benchmarks/baseline.py</code>). Its proposed actions are counted, never run.</li>
+          <li><strong>Limits:</strong> 14 cases is a small suite and the model varies between runs, so these numbers do not predict detection on the open web. Earlier runs, including two that each missed one case, are kept and explained.</li>
+        </ul>
+        <h3 class="bench-subhead">Raw reports</h3>
+        <p class="bench-links">
+          <a class="text-link" href="https://github.com/djihane19/link-detonator/blob/main/reports/README.md" rel="noopener noreferrer" target="_blank">Run history and what changed</a>
+          <a class="text-link" href="https://github.com/djihane19/link-detonator/blob/main/reports/benchmark-real-4.json" rel="noopener noreferrer" target="_blank">Run 4 (published)</a>
+          <a class="text-link" href="https://github.com/djihane19/link-detonator/blob/main/reports/benchmark-real-3.json" rel="noopener noreferrer" target="_blank">Run 3</a>
+          <a class="text-link" href="https://github.com/djihane19/link-detonator/blob/main/reports/benchmark-real-2.json" rel="noopener noreferrer" target="_blank">Run 2</a>
+          <a class="text-link" href="https://github.com/djihane19/link-detonator/blob/main/reports/benchmark-real-1.json" rel="noopener noreferrer" target="_blank">Run 1</a>
+          <a class="text-link" href="https://github.com/djihane19/link-detonator/blob/main/reports/baseline-naive-1.json" rel="noopener noreferrer" target="_blank">Baseline 1</a>
+          <a class="text-link" href="https://github.com/djihane19/link-detonator/blob/main/reports/baseline-naive-2.json" rel="noopener noreferrer" target="_blank">Baseline 2</a>
+          <a class="text-link" href="https://github.com/djihane19/link-detonator/blob/main/reports/baseline-naive-3.json" rel="noopener noreferrer" target="_blank">Baseline 3</a>
+        </p>
+        <h3 class="bench-subhead">Reproduce it</h3>
+        <p class="hint">Rule layers only, on any machine with Python 3.12 or later. No key, no Docker, no cost. This uses a test model that obeys every attack, so all 14 cases are expected to fail; it shows the rules deny its actions. It is not model performance.</p>
+        <pre class="bench-code"><code>git clone https://github.com/djihane19/link-detonator.git
+cd link-detonator
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m playwright install chromium
+make harness PYTHON=.venv/bin/python</code></pre>
+        <p class="hint">The real benchmark and baseline, on a VM provisioned with <code>deploy/provision.sh</code> and an inference key. Each run makes 14 to 30 model calls.</p>
+        <pre class="bench-code"><code>cd /opt/link-detonator
+set -a; . /etc/link-detonator/app.env; set +a
+.venv/bin/python -m benchmarks.run --model vultr --out reports/my-run.json
+.venv/bin/python -m benchmarks.baseline --out reports/my-baseline.json</code></pre>
       </div>
     </section>
 

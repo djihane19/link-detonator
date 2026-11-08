@@ -13,10 +13,12 @@
 <body data-page="report" data-runner="unknown">
   <a class="skip" href="#blast-title">Skip to the Blast Radius</a>
 
+  <!-- dev-only -->
   <div class="dev-banner" role="note">
     <strong>DEV: NOT SANDBOXED</strong>
     <span>This browser ran directly on this machine. No container, no firewall. Offline fixtures only.</span>
   </div>
+  <!-- /dev-only -->
 
   <div class="tape" aria-hidden="true"></div>
 
@@ -30,6 +32,7 @@
     </a>
     <div class="report-actions">
       <button id="copy-link" class="ghost" type="button">Copy report link</button>
+      <a id="receipt-link" class="ghost" hidden download>Evidence receipt</a>
       <a class="ghost" href="/benchmark">Benchmark</a>
       <a class="ghost" href="/">New scan</a>
     </div>
@@ -41,6 +44,7 @@
         <p class="eyebrow" id="target-kind">Target</p>
         <p id="target-text" class="target-text" dir="ltr">Loading</p>
         <p class="hint">Shown as plain text. Attacker-controlled strings on this page are never clickable.</p>
+        <p id="receipt-digest" class="hint receipt-digest" hidden></p>
       </div>
       <dl class="readout">
         <div><dt>State</dt><dd id="scan-state" class="state" data-state="loading">Loading</dd></div>
@@ -52,15 +56,30 @@
     <p id="stream-note" class="stream-note" role="status" hidden></p>
     <p id="live-announcer" class="visually-hidden" aria-live="polite"></p>
 
+    <ol id="pipeline" class="pipeline" aria-label="Investigation progress">
+      <li data-stage="sandbox" data-state="waiting"><span class="stage-name">Sandbox</span><span class="stage-detail">Waiting</span></li>
+      <li data-stage="evidence" data-state="waiting"><span class="stage-name">Evidence</span><span class="stage-detail">Waiting</span></li>
+      <li data-stage="containment" data-state="waiting"><span class="stage-name">Containment verified</span><span class="stage-detail">Waiting</span></li>
+      <li data-stage="ai" data-state="waiting"><span class="stage-name">AI analysis</span><span class="stage-detail">Waiting</span></li>
+    </ol>
+
     <section id="verdict-card" class="verdict" data-status="pending" aria-labelledby="verdict-title">
       <p class="eyebrow">Verdict</p>
       <h2 id="verdict-title" class="verdict-title">No AI verdict yet</h2>
+      <p id="verdict-plain" class="verdict-plain" hidden></p>
       <ul id="verdict-tally" class="verdict-tally" hidden aria-label="Outcome counts"></ul>
       <div id="open-link" class="open-link" hidden>
         <p class="hint">No threats were found in this scan. That is not a guarantee: the AI's verdict is an opinion based on the evidence, and a page can change after it was scanned or show different content to different visitors.</p>
         <button id="open-link-button" class="ghost" type="button">Open the link in a new tab</button>
       </div>
       <div id="verdict-body" class="verdict-body">No verdict has been issued, and none is implied. Everything on this page is raw evidence, not a judgement.</div>
+    </section>
+
+    <section id="manipulation-card" class="manipulation" hidden aria-labelledby="manipulation-title">
+      <h2 id="manipulation-title" class="section-label">AI manipulation analysis</h2>
+      <p class="hint">How this page tried to influence the AI investigating it, from recorded checks only. "Attempted" is not the same as "succeeded".</p>
+      <p id="manipulation-summary" class="manipulation-summary"></p>
+      <ul id="manipulation-findings" class="manipulation-findings"></ul>
     </section>
 
     <section id="qr-card" class="qr-card" hidden aria-labelledby="qr-card-title">

@@ -13,10 +13,12 @@
 <body data-page="home" data-runner="unknown">
   <a class="skip" href="#arm">Skip to the scan form</a>
 
+  <!-- dev-only -->
   <div class="dev-banner" role="note">
     <strong>DEV: NOT SANDBOXED</strong>
     <span>This browser runs directly on this machine. No container, no firewall. Offline fixtures only.</span>
   </div>
+  <!-- /dev-only -->
 
   <div class="tape" aria-hidden="true"></div>
 
@@ -154,12 +156,14 @@
         <li><span class="principle-key">No secrets inside</span> Nothing is passed into the container. Evidence leaves through one output stream, treated as hostile.</li>
         <li><span class="principle-key">Destroyed, then checked</span> Every chamber is removed after its scan, and the host confirms it is gone.</li>
       </ul>
+      <!-- dev-only -->
       <p class="dev-only principle-warning">None of the four applies in this dev run. The worker is a plain local process.</p>
+      <!-- /dev-only -->
     </section>
   </main>
 
   <footer class="site-foot">
-    <p>Link Detonator. Defensive triage tool. Evidence only: no AI verdict is connected in this build.</p>
+    <p>Link Detonator. Defensive triage tool. The AI verdict is a model opinion; containment is shown only where recorded sandbox evidence proves it.</p>
   </footer>
   <noscript><p class="noscript">Link Detonator needs JavaScript to submit and display scans.</p></noscript>
 </body>

@@ -12,6 +12,72 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const TERMINAL_STATES = new Set(["ok", "partial", "error", "interrupted", "finished"]);
+/* ---- Investigation progress: every stage comes from a recorded event, never a timer. */
+
+const pipeline = { sandbox: false, worker: false, evidence: false, removed: null, error: false };
+
+function notePipeline(event) {
+  const host = event.source === "host";
+  if (event.type === "verdict" && host) report.verdictSeq = event.seq;
+  if (event.type === "sandbox_created" && host) pipeline.sandbox = true;
+  if (event.type === "worker_started") pipeline.worker = true;
+  if (["worker_finished", "sandbox_exit", "deadline_killed", "output_limit_killed"].includes(event.type)) pipeline.evidence = true;
+  if (event.type === "sandbox_removed" && host) pipeline.removed = event.data?.verified === true;
+  if (event.type === "scan_error" && host) pipeline.error = true;
+  renderPipeline();
+}
+
+function stageStates() {
+  const finished = FINAL_STATES.has(report.status);
+  const dev = document.body.dataset.runner === "dev";
+  const verdict = report.verdict;
+  const states = {};
+  if (pipeline.sandbox) states.sandbox = ["done", "Container started"];
+  else if (dev && (pipeline.worker || finished)) states.sandbox = ["skipped", "Dev run: no sandbox"];
+  else if (finished) states.sandbox = ["failed", "No sandbox was recorded"];
+  else states.sandbox = [report.status === "running" ? "active" : "waiting", report.status === "running" ? "Starting" : "Queued"];
+
+  if (pipeline.evidence) states.evidence = ["done", "Page recorded"];
+  else if (finished) states.evidence = [pipeline.error ? "failed" : "skipped", "Recording incomplete"];
+  else if (pipeline.sandbox || pipeline.worker) states.evidence = ["active", "Recording the page"];
+  else states.evidence = ["waiting", "Waiting"];
+
+  if (pipeline.removed === true) states.containment = ["done", "Container destroyed and checked"];
+  else if (pipeline.removed === false) states.containment = ["failed", "Removal not verified"];
+  else if (dev && (pipeline.evidence || finished)) states.containment = ["skipped", "Dev run: nothing to verify"];
+  else if (finished) states.containment = ["failed", "No removal was recorded"];
+  else if (pipeline.evidence) states.containment = ["active", "Checking"];
+  else states.containment = ["waiting", "Waiting"];
+
+  const complete = verdict && verdict.status === "complete";
+  if (complete) states.ai = ["done", "Verdict ready"];
+  else if (verdict && verdict.status === "unavailable") states.ai = ["failed", "Model unavailable"];
+  else if (finished) states.ai = ["skipped", "No AI verdict"];
+  else if (pipeline.removed !== null || (dev && pipeline.evidence)) states.ai = ["active", "Analysing evidence"];
+  else states.ai = ["waiting", "Waiting"];
+  return states;
+}
+
+function renderPipeline() {
+  const list = byId("pipeline");
+  if (!list) return;
+  const states = stageStates();
+  for (const item of list.children) {
+    const [state, detail] = states[item.dataset.stage] || ["waiting", "Waiting"];
+    item.dataset.state = state;
+    item.querySelector(".stage-detail").textContent = detail;
+  }
+}
+
+const PLAIN_VERDICT = {
+  malicious: "Malicious indicators observed. Do not open this link.",
+  suspicious: "Suspicious indicators observed. Treat this link with caution.",
+  benign: "No malicious indicators observed in this scan. That is not a guarantee.",
+  inconclusive: "Inconclusive. The evidence was not enough for a judgement.",
+};
+
+const FINAL_STATES = new Set(["ok", "partial", "error", "interrupted", "finished"]);
+
 const STATE_LABELS = {
   loading: "Loading",
   queued: "Queued",
@@ -343,8 +409,38 @@ function renderTarget(target) {
   text.append(scannedText(target.value || ""));
 }
 
+let receiptLoaded = false;
+
+/* The receipt exists once a scan is final. Its digest is shown here so a downloaded copy
+   can be compared with it; the chain is tamper-evident, not a signature. */
+async function offerReceipt() {
+  if (receiptLoaded || !report.id || !byId("receipt-link")) return;
+  receiptLoaded = true;
+  const url = `/api/scans/${encodeURIComponent(report.id)}/receipt.json`;
+  try {
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) {
+      receiptLoaded = false;
+      return;
+    }
+    const receipt = await response.json();
+    if (!/^[0-9a-f]{64}$/.test(receipt.final_digest || "")) return;
+    const link = byId("receipt-link");
+    link.href = url;
+    link.hidden = false;
+    const digest = byId("receipt-digest");
+    digest.textContent = `Evidence receipt digest (SHA-256): ${receipt.final_digest}. This server computes it from its own records, so it is not an independent copy. Save it outside this site now: a saved copy exposes any later change to this record. Not a signature.`;
+    digest.hidden = false;
+  } catch {
+    receiptLoaded = false;
+  }
+}
+
 function setState(status, labelOverride) {
   report.status = status;
+  if (FINAL_STATES.has(status)) offerReceipt();
+  if (FINAL_STATES.has(status) && byId("verdict-card")) renderVerdict(report.verdict);
+  renderPipeline();
   const node = byId("scan-state");
   node.dataset.state = status;
   node.textContent = labelOverride || STATE_LABELS[status] || status;
@@ -489,6 +585,7 @@ function applyEvent(event, live) {
 
 function routeEvent(event, live) {
   const data = event.data || {};
+  notePipeline(event);
   if (event.type === "screenshot") addFrame(event, live);
   if (event.type === "navigation") addHop(data);
   if (event.type === "text_layers") addTextLayers(event);
@@ -620,6 +717,9 @@ function keepPinned(list, live) {
 function jumpToEvidence(seq) {
   const target = byId(`ev-${seq}`);
   if (!target) return;
+  // Stays highlighted until the next jump, so it is clear which event was meant.
+  for (const previous of document.querySelectorAll(".tl.is-current, .tl-subitem.is-current")) previous.classList.remove("is-current");
+  target.classList.add("is-current");
   const fold = target.closest("details");
   if (fold) fold.open = true;
   target.scrollIntoView({ behavior: prefersCalm() ? "auto" : "smooth", block: "center" });
@@ -1126,6 +1226,79 @@ function offerOpenLink(verdict) {
   };
 }
 
+/* ---- AI manipulation analysis: recorded checks only, attempts kept apart from successes. */
+
+const PATTERN_LABELS = {
+  override_instructions: "Tried to override the AI's instructions",
+  reveal_prompt: "Asked the AI to reveal its instructions",
+  steer_verdict: "Tried to steer the verdict (\"say it is safe\")",
+  exfiltrate: "Asked the AI to send credentials or secrets",
+  local_or_internal: "Pointed the AI at local files or internal addresses",
+  run_download: "Told the AI to download and run something",
+};
+
+function evidenceButtons(seqs) {
+  // A signal lists its event once per matching fragment; show each source event once.
+  return [...new Set(seqs || [])].slice(0, MAX_SEQ_LINKS).map((seq) => h("button", {
+    class: "seq-link",
+    type: "button",
+    "aria-label": `Jump to event ${seq} in the timeline`,
+    on: { click: () => jumpToEvidence(seq) },
+  }, `#${seq}`));
+}
+
+function manipulationFinding(outcome, text, seqs) {
+  const label = { attempted: "Attempted", denied: "Denied by rules", resisted: "Resisted", succeeded: "Succeeded", partial: "Succeeded in part", observed: "Observed", allowed: "Allowed by rules", detected: "Detected by the model" }[outcome] || outcome;
+  const holder = h("span", { class: "row-evidence" });
+  const buttons = evidenceButtons(seqs);
+  if (buttons.length) holder.append("Source ", ...buttons);
+  return h("li", { class: "manipulation-finding", "data-outcome": outcome },
+    h("strong", { class: "manipulation-outcome" }, label),
+    h("span", { class: "manipulation-text" }, scannedText(text)),
+    holder);
+}
+
+function renderManipulation(verdict) {
+  const card = byId("manipulation-card");
+  if (!card) return;
+  if (!verdict || verdict.status !== "complete") {
+    card.hidden = true;
+    return;
+  }
+  const verdictSeqs = typeof report.verdictSeq === "number" ? [report.verdictSeq] : [];
+  const findings = [];
+  for (const signal of verdict.signals || []) {
+    const what = PATTERN_LABELS[signal.pattern] || String(signal.pattern);
+    if (signal.layer === "concealed") findings.push(manipulationFinding("attempted", `${what}, in text hidden from people.`, signal.evidence_seqs));
+    else findings.push(manipulationFinding("observed", `Visible text matches "${what}". Visible text can be legitimate, such as an article about attacks.`, signal.evidence_seqs));
+  }
+  if (verdict.injection_reported_by_model) findings.push(manipulationFinding("detected", "The model reported prompt injection in this page.", verdictSeqs));
+  for (const decision of verdict.policy_decisions || []) {
+    if (decision.allowed) findings.push(manipulationFinding("allowed", `The model asked to ${decision.kind} ${decision.target}; the rules allowed it in a new sandbox.`, verdictSeqs));
+    else findings.push(manipulationFinding("denied", `The model asked to ${decision.kind} ${decision.target}; the rules denied it (${decision.rule}).`, verdictSeqs));
+  }
+  const manipulation = verdict.manipulation || {};
+  const comparedHidden = (verdict.model?.calls ?? 0) >= 2 && (verdict.signals || []).some((s) => s.layer === "concealed") || manipulation.verdict_flipped;
+  if (manipulation.verdict_flipped) findings.push(manipulationFinding("partial", "Shown its hidden text, the model judged the page safer. The final verdict was raised by the rules, so it did not lower the result.", verdictSeqs));
+  else if (comparedHidden) findings.push(manipulationFinding("resisted", "The hidden text did not make the model judge the page safer.", verdictSeqs));
+  if (manipulation.canary_leaked) findings.push(manipulationFinding("succeeded", "The model's output repeated a secret planted in its instructions. It stayed inside Link Detonator and was redacted from this report.", verdictSeqs));
+  else findings.push(manipulationFinding("resisted", "A secret planted in the model's instructions never appeared in its output.", verdictSeqs));
+
+  const executed = (verdict.policy_decisions || []).some((d) => d.allowed && d.kind !== "open_link");
+  const compromised = manipulation.canary_leaked || manipulation.verdict_flipped || executed;
+  const attempted = findings.some((f) => ["attempted", "denied", "detected"].includes(f.dataset.outcome));
+  byId("manipulation-summary").textContent = compromised
+    ? "Partial compromise recorded: see the findings marked Succeeded. No action outside the rules was executed."
+    : attempted
+      ? "Manipulation was attempted. No successful compromise was recorded by these checks."
+      : "No manipulation attempt was recorded by these checks.";
+  card.dataset.compromised = String(Boolean(compromised));
+  const list = byId("manipulation-findings");
+  clear(list);
+  list.append(...findings);
+  card.hidden = false;
+}
+
 function renderTally(verdict) {
   const tally = byId("verdict-tally");
   if (!tally) return;
@@ -1184,16 +1357,27 @@ function verdictLine(label, text, outcome) {
 }
 
 function renderVerdict(verdict) {
+  report.verdict = verdict;
+  renderPipeline();
   const card = byId("verdict-card");
   const title = byId("verdict-title");
   const body = byId("verdict-body");
   clear(body);
   const tally = byId("verdict-tally");
   if (tally) tally.hidden = true;
-  if (!verdict || verdict.status === "pending" || !verdict.status) {
+  const plain = byId("verdict-plain");
+  if (plain) plain.hidden = true;
+  const manipulationCard = byId("manipulation-card");
+  if (manipulationCard) manipulationCard.hidden = true;
+  if (!verdict || !verdict.status || verdict.status === "pending") {
+    // The AI runs after the sandbox has finished and been removed, so a running scan
+    // has no verdict yet. A finished scan with none had no model, or its analysis failed.
     card.dataset.status = "pending";
-    title.textContent = "No AI verdict for this scan";
-    body.textContent = "The model is not connected or this scan has not been analysed. Everything on this page is raw evidence, not a judgement.";
+    const finished = FINAL_STATES.has(report.status);
+    title.textContent = finished ? "No AI verdict for this scan" : "AI analysis pending";
+    body.textContent = finished
+      ? "No AI model is configured on this deployment, or the analysis did not complete. Everything on this page is raw evidence, not a judgement."
+      : "The AI analyses the evidence after the sandbox run finishes and the container is removed.";
     return;
   }
   if (verdict.status === "unavailable") {
@@ -1204,8 +1388,13 @@ function renderVerdict(verdict) {
   }
   card.dataset.status = String(verdict.classification);
   title.textContent = String(verdict.classification);
+  if (plain) {
+    plain.textContent = PLAIN_VERDICT[verdict.classification] || "";
+    plain.hidden = !plain.textContent;
+  }
   renderTally(verdict);
   offerOpenLink(verdict);
+  renderManipulation(verdict);
   const environment = verdict.verification?.environment;
   const parts = [scannedText(verdict.summary || "")];
   const opinion = [verdictLine("Model confidence", `${Math.round((verdict.model_confidence || 0) * 100)}% (the model's opinion, not a verified fact)`)];
