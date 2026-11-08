@@ -12,10 +12,10 @@ Built for the lablab.ai "Vultr: Agent Rush" hackathon (Blast Radius Zero challen
 | **1. Run the Gauntlet** | Click "Run the Gauntlet" on the home page: one page that attacks the agent several ways at once. Watch the Blast Radius fill in, then read the verdict at the top. No access code needed. |
 | **2. Scan a QR code** | Upload `demo/qr/1-fake-bank-login.png`, decode, then investigate. Then try `4-cloud-metadata-refused.png`: it is refused before anything runs. |
 | **3. Benchmark** | https://185.92.220.83.sslip.io/benchmark shows real attacks against the agent, measured, plus the same model without our protections: it called 1 to 2 of 11 attacks safe in each of 3 runs; Link Detonator 0 of 11. History: [reports/README.md](reports/README.md) |
-| **4. Proof of containment** | [docs/VERIFICATION.md](docs/VERIFICATION.md): raw output of 40 sandbox and firewall checks on the live VM, and what they do not prove |
+| **4. Proof of containment** | [docs/VERIFICATION.md](docs/VERIFICATION.md): raw output of 44 sandbox and firewall checks on the live VM, and what they do not prove |
 | **Design and trade-offs** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md), [docs/AUDIT.md](docs/AUDIT.md) |
 
-Test pages and test QR codes need no code. Live links on the open web need an access code, so strangers cannot use the server to attack other sites or spend its credit.
+Test pages and test QR codes need no code. To scan a live link of your own, use the judges' access code **`vultr-judges-2026`** (temporary, valid during judging). Live links otherwise need the operator's access code, so strangers cannot use the server to attack other sites or spend its credit.
 
 ## AI agent
 
@@ -154,7 +154,7 @@ More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The engineering 
 - **DNS can leak data.** Lookups for attacker-chosen names reach the attacker's name server through the resolver.
 - **Evasion works.** A page can detect a headless browser, or wait out the 60-second deadline, and show nothing. A clean report does not mean a safe link.
 - **There are no user accounts.** Anyone can run the built-in test charges, within per-client and global limits. Report URLs are unguessable rather than private.
-- **Live URL scans are off until you turn them on.** A live scan runs a stranger's JavaScript from this VM's address, and stores what it finds for 7 days, so abuse complaints would name you. Set a long random `LD_LIVE_ACCESS_CODE` in `/etc/link-detonator/app.env` and give it only to people you trust. `LD_LIVE_SCANS_ENABLED=0` is the kill switch. There is a daily budget, non-GET requests are stopped in live mode and egress is throttled, but none of this makes it safe to publish the code.
+- **Live URL scans are off until you turn them on.** A live scan runs a stranger's JavaScript from this VM's address, and stores what it finds for 7 days, so abuse complaints would name you. Set a long random `LD_LIVE_ACCESS_CODE` in `/etc/link-detonator/app.env` and give it only to people you trust. `LD_LIVE_SCANS_ENABLED=0` is the kill switch. There is a daily budget, non-GET requests are stopped in live mode and egress is throttled, but none of this makes it safe to publish a long-lived code. The judges' code above is temporary and is replaced after judging with `deploy/set_access_code.sh`.
 - **Secret audit coverage.** Each scan compares the sandbox's environment against the named secrets, anything in the orchestrator's environment whose name looks like a secret, and a random canary. Add a new key's name to `LD_SECRET_ENV_NAMES` as well when you add the key, in case its name does not look like one.
 
 ## Local development
